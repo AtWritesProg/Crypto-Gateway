@@ -114,6 +114,7 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
 
         //Generate unique payment ID
         uint256 nonce = nonces[msg.sender];
+        nonces[msg.sender]++;
         paymentId = PaymentUtils.generatePaymentId(
             msg.sender,
             token,
@@ -198,7 +199,7 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
 
         uint256 requiredAmount = payment.amount;
         if(amount < requiredAmount) {
-            revert InsufficientPayment(requiredAmount, msg.value);
+            revert InsufficientPayment(requiredAmount, amount);
         }
 
         // Calculate fees
@@ -284,6 +285,84 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
         return payment.status;
     }
 
+    function isPaymentValid(bytes32 paymentId) external view override returns (bool) {
+        Payment memory payment = payments[paymentId];
+        
+        if (payment.paymentId == bytes32(0)) return false;
+        if (payment.status != PaymentStatus.Pending) return false;
+        if (PaymentUtils.isExpired(payment.expiresAt)) return false;
+        
+        return true;
+    }
+
+    /**
+     * @dev Clean up expired payments
+     */
+    function cleanupExpiredPayments(bytes32[] memory paymentIds) external {
+        for (uint256 i = 0; i < paymentIds.length; i++) {
+            Payment storage payment = payments[paymentIds[i]];
+            
+            if (payment.paymentId != bytes32(0) && 
+                payment.status == PaymentStatus.Pending && 
+                PaymentUtils.isExpired(payment.expiresAt)) {
+                
+                payment.status = PaymentStatus.Expired;
+                emit PaymentExpired(paymentIds[i]);
+            }
+        }
+    }
+
+    // Administrative functions
+
+    /**
+     * @dev Update processing fee (only Owner)
+     */
+    function updateProcessingFee(uint256 newFee) external onlyOwner {
+        if (newFee > 1000) revert InvalidFee();
+
+        uint256 oldFee = processingFee;
+        processingFee = newFee;
+
+        emit FeeUpdated(oldFee, newFee);
+    }
+
+    /**
+     * @dev Update fee recipient (only owner)
+     */
+    function updateFeeRecipient(address newRecipient) external onlyOwner {
+        if (newRecipient == address(0)) revert InvalidFeeRecipient();
+        
+        address oldRecipient = feeRecipient;
+        feeRecipient = newRecipient;
+        
+        emit FeeRecipientUpdated(oldRecipient, newRecipient);
+    }
+
+    /**
+     * @dev Pause contract (emergency)
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Unpause contract
+     */
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    /**
+     * @dev Emergency withdrawal of stuck funds (only owner)
+     */
+    function emergencyWithdraw(address token, uint256 amount) external onlyOwner {
+        if (token == ETH_ADDRESS) {
+            SafeTransfer.transferETH(owner(), amount);
+        } else {
+            IERC20(token).safeTransfer(owner(), amount);
+        }
+    }
+
     //Internal Function
     function _validatePaymentForProcessing(Payment memory payment) internal view {
         if (payment.status != PaymentStatus.Pending) {
@@ -292,6 +371,46 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
 
         if(PaymentUtils.isExpired(payment.expiresAt)) {
             revert PaymentHasExpired(payment.paymentId);
+        }
+    }
+
+    /**
+     * @dev Get current nonce for merchant
+     */
+    function getMerchantNonce(address merchant) external view returns (uint256) {
+        return nonces[merchant];
+    }
+
+    /**
+     * @dev Get total payments count for merchant
+     */
+    function getMerchantPaymentCount(address merchant) external view returns (uint256) {
+        return merchantPayments[merchant].length;
+    }
+
+    /**
+     * @dev Get paginated merchant payments
+     */
+    function getMerchantPaymentsPaginated(
+        address merchant,
+        uint256 offset,
+        uint256 limit
+    ) external view returns (bytes32[] memory paginatedPayments) {
+        bytes32[] memory allPayments = merchantPayments[merchant];
+        
+        if (offset >= allPayments.length) {
+            return new bytes32[](0);
+        }
+        
+        uint256 end = offset + limit;
+        if (end > allPayments.length) {
+            end = allPayments.length;
+        }
+        
+        paginatedPayments = new bytes32[](end - offset);
+        
+        for (uint256 i = offset; i < end; i++) {
+            paginatedPayments[i - offset] = allPayments[i];
         }
     }
 }

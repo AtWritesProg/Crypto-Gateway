@@ -334,7 +334,7 @@ contract MerchantRegistry is IMerchantRegistry, Ownable, Pausable {
         for (uint256 i = 0; i <= sourceBytes.length - searchBytes.length; i++) {
             bool found = true;
             for (uint256 j = 0; j < searchBytes.length; j++) {
-                if(sourceBytes[i+j] != searchBytes[i]){
+                if(sourceBytes[i+j] != searchBytes[j]){
                     found = false;
                     break;
                 }

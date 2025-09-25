@@ -96,7 +96,7 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
     function updateTokenPriceFeed(address token, address newPriceFeed) external onlyOwner {
         if (!tokenFeeds[token].isActive) revert TokenNotSupported(token);
         if (newPriceFeed == address(0)) revert InvalidPriceFeed(newPriceFeed);
-
+        
         AggregatorV3Interface feed = AggregatorV3Interface(newPriceFeed);
 
         try feed.latestRoundData() returns (uint80, int256 price, uint256, uint256, uint80) {
@@ -124,7 +124,7 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
         // Remove from supported tokens array
         for (uint256 i = 0; i < supportedTokens.length; i++) {
             if (supportedTokens[i] == token) {
-                supportedTokens[i] == supportedTokens[supportedTokens.length - 1];
+                supportedTokens[i] = supportedTokens[supportedTokens.length - 1];
                 supportedTokens.pop();
                 break;
             }
