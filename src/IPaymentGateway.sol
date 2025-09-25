@@ -7,7 +7,7 @@ pragma solidity ^0.8.19;
  * @dev Interface for the main payment gateway contract
  */
 
-interface IpaymentGateway{
+interface IPaymentGateway{
 
     struct Payment {
         bytes32 paymentId;
@@ -78,7 +78,7 @@ interface IPriceOracle {
 
     function getTokenPriceInUSD(address token) external view returns (uint256);
 
-     function convertUSDToToken(address token, uint256 usdAmount) external view returns (uint256);
+    function convertUSDToToken(address token, uint256 usdAmount) external view returns (uint256);
     
     function convertTokenToUSD(address token, uint256 tokenAmount) external view returns (uint256);
     
