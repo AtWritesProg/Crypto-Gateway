@@ -48,10 +48,16 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
     event FeeRecipientUpdated(address oldRecipient, address newRecipient);
 
     // Errors
+    // error PaymentExpired(bytes32 paymentId); // Removed duplicate declaration
     error InvalidFeeRecipient();
     error InvalidFee();
     error UnauthorizedMerchant(address merchant);
     error PaymentNotFound(bytes32 paymentId);
+    error PaymentAlreadyProcessed(bytes32 paymentId);
+    error PaymentHasExpired(bytes32 paymentId);
+    error InvalidPaymentAmount(uint256 expected, uint256 provided);
+    error InsufficientPayment(uint256 required, uint256 provided);
+    
 
     modifier onlyActiveMerchant() {
         if (!merchantRegistry.isMerchantActive(msg.sender)) {
@@ -99,6 +105,193 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
 
         if (!priceOracle.isTokenSupported(token)) {
             revert PaymentUtils.InvalidToken();
+        }
+        
+        //Ensure duration is within the bounds
+        if(duration < MIN_PAYMENT_DURATION || duration > MAX_PAYMENT_DURATION) {
+            duration = DEFAULT_PAYMENT_DURATION;
+        }
+
+        //Generate unique payment ID
+        uint256 nonce = nonces[msg.sender];
+        paymentId = PaymentUtils.generatePaymentId(
+            msg.sender,
+            token,
+            amountUSD,
+            block.timestamp,
+            nonce
+        );
+
+        // Convert USD to token amount
+        uint256 tokenAmount = priceOracle.convertUSDToToken(token, amountUSD);
+
+        payments[paymentId] = Payment({
+            paymentId: paymentId,
+            merchant: msg.sender,
+            customer: address(0),
+            token: token,
+            amount: tokenAmount,
+            amountUSD:amountUSD,
+            timestamp: uint64(block.timestamp),
+            expiresAt: uint64(block.timestamp + duration),
+            status: PaymentStatus.Pending
+        });
+
+        merchantPayments[msg.sender].push(paymentId);
+
+        emit PaymentCreated(paymentId,msg.sender,token,tokenAmount,amountUSD,uint64(block.timestamp));
+
+        return paymentId;
+    }
+
+    /**
+     * @dev Process ETH payment
+     */
+    function processPayment(bytes32 paymentId) external payable override validPayment(paymentId) whenNotPaused nonReentrant {
+        Payment storage payment = payments[paymentId];
+
+        // Validate payment state
+        _validatePaymentForProcessing(payment);
+
+        if(payment.token != ETH_ADDRESS) {
+            revert InvalidPaymentAmount(0, msg.value);
+        }
+
+        uint256 requiredAmount = payment.amount;
+        if(msg.value < requiredAmount) {
+            revert InsufficientPayment(requiredAmount, msg.value);
+        }
+
+        //Calculate Fees
+        uint256 feeAmount = payment.amount.percentage(processingFee);
+        uint256 merchantAmount = payment.amount - feeAmount;
+
+        // Update payment status
+        payment.status = PaymentStatus.Completed;
+        payment.customer = msg.sender;
+
+        // Transfer funds
+        if (feeAmount > 0) {
+            SafeTransfer.transferETH(feeRecipient, feeAmount);
+        }
+        SafeTransfer.transferETH(payment.merchant, merchantAmount);
+
+        // Refund excess payment
+        if (msg.value > requiredAmount) {
+            SafeTransfer.transferETH(msg.sender, msg.value - requiredAmount);
+        }
+
+        emit PaymentCompleted(paymentId, msg.sender, msg.value);
+    }
+
+    /**
+     * @dev Process ERC20 token payment
+     */
+    function processTokenPayment(bytes32 paymentId, uint256 amount) external override validPayment(paymentId) whenNotPaused nonReentrant {
+        Payment storage payment = payments[paymentId];
+
+        _validatePaymentForProcessing(payment);
+
+        if(payment.token == ETH_ADDRESS) {
+            revert InvalidPaymentAmount(0, amount);
+        }
+
+        uint256 requiredAmount = payment.amount;
+        if(amount < requiredAmount) {
+            revert InsufficientPayment(requiredAmount, msg.value);
+        }
+
+        // Calculate fees
+        uint256 feeAmount = amount.percentage(processingFee);
+        uint256 merchantAmount = amount - feeAmount;
+
+        // Update payment status
+        payment.status = PaymentStatus.Completed;
+        payment.customer = msg.sender;
+
+        // Transfer tokens
+        IERC20 token = IERC20(payment.token);
+        
+        if (feeAmount > 0) {
+            token.safeTransferFrom(msg.sender, feeRecipient, feeAmount);
+        }
+        token.safeTransferFrom(msg.sender, payment.merchant, merchantAmount);
+
+        emit PaymentCompleted(paymentId, msg.sender, amount);
+    }
+
+    /**
+     * @dev Refund a payment
+     */
+
+    function refundPayment(bytes32 paymentId) external override validPayment(paymentId) whenNotPaused nonReentrant {
+        Payment storage payment = payments[paymentId];
+
+        //Only merchants can refund active payments, anyone can refund expired payments
+        if (payment.status != PaymentStatus.Completed) {
+            revert PaymentNotFound(paymentId);
+        }
+
+        if (msg.sender != payment.merchant && !PaymentUtils.isExpired(payment.expiresAt)) {
+            revert UnauthorizedMerchant(msg.sender);
+        }        
+
+        // Update payment status
+        payment.status = PaymentStatus.Refunded;
+
+        // Process refund
+        if (payment.token == ETH_ADDRESS) {
+            SafeTransfer.transferETH(payment.customer, payment.amount);
+        } else {
+            IERC20(payment.token).safeTransfer(payment.customer, payment.amount);
+        }
+
+        emit PaymentRefunded(paymentId, payment.customer, payment.amount);
+    }
+
+    /**
+     * @dev Get payment details
+     */
+    function getPayment(bytes32 paymentId) external view override returns (Payment memory) {
+        if (payments[paymentId].paymentId == bytes32(0)) {
+            revert PaymentNotFound(paymentId);
+        }
+        return payments[paymentId];
+    }
+
+    /**
+     * @dev Get all payments IDs for a merchant
+     */
+    function getMerchantPayments(address merchant) external view override returns (bytes32[] memory) {
+        return merchantPayments[merchant];
+    }
+
+    /**
+     * @dev Get Payment Status
+     */
+    function getPaymentStatus(bytes32 paymentId) external view returns (PaymentStatus) {
+        Payment memory payment = payments[paymentId];
+        
+        if (payment.paymentId == bytes32(0)) {
+            revert PaymentNotFound(paymentId);
+        }
+
+        // Update status if expired
+        if (payment.status == PaymentStatus.Pending && PaymentUtils.isExpired(payment.expiresAt)) {
+            return PaymentStatus.Expired;
+        }
+
+        return payment.status;
+    }
+
+    //Internal Function
+    function _validatePaymentForProcessing(Payment memory payment) internal view {
+        if (payment.status != PaymentStatus.Pending) {
+            revert PaymentAlreadyProcessed(payment.paymentId);
+        }
+
+        if(PaymentUtils.isExpired(payment.expiresAt)) {
+            revert PaymentHasExpired(payment.paymentId);
         }
     }
 }
