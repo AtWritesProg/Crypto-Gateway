@@ -27,7 +27,7 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
     address[] private supportedTokens;
 
     // ETH address representation (0x0 for native ETH)
-    address private constant ETH_ADDRESS = address(0);
+    address private constant ETH_ADDRESS = address(0x1111111111111111111111111111111111111111);
     
     // Maximum price age in seconds (15 minutes)
     uint256 private constant MAX_PRICE_AGE = 900;
