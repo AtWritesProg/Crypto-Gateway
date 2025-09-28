@@ -10,10 +10,10 @@ import {IPriceOracle} from "./IPaymentGateway.sol";
 import {MathUtils} from "./PaymentUtils.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
+contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard {
     using MathUtils for uint256;
 
-    struct TokenInfo{
+    struct TokenInfo {
         AggregatorV3Interface priceFeed;
         uint8 decimals;
         bool isActive;
@@ -28,10 +28,10 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
 
     // ETH address representation (0x0 for native ETH)
     address private constant ETH_ADDRESS = address(0x1111111111111111111111111111111111111111);
-    
+
     // Maximum price age in seconds (15 minutes)
     uint256 private constant MAX_PRICE_AGE = 900;
-    
+
     // Price deviation threshold (5%)
     uint256 private constant PRICE_DEVIATION_THRESHOLD = 500; // 5% in basis points
 
@@ -47,7 +47,7 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
     error StalePrice(address token, uint256 updatedAt);
     error TokenNotSupported(address token);
 
-    constructor() Ownable(msg.sender){
+    constructor() Ownable(msg.sender) {
         _transferOwnership(msg.sender);
     }
 
@@ -61,15 +61,9 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
         AggregatorV3Interface feed = AggregatorV3Interface(priceFeed);
 
         // Validate the price feed by getting latest price
-        try feed.latestRoundData() returns (
-            uint80,
-            int256 price,
-            uint256,
-            uint256 updatedAt,
-            uint80
-        ) {
+        try feed.latestRoundData() returns (uint80, int256 price, uint256, uint256 updatedAt, uint80) {
             if (price <= 0) revert InvalidPrice(token, price);
-            if(block.timestamp - updatedAt > MAX_PRICE_AGE) {
+            if (block.timestamp - updatedAt > MAX_PRICE_AGE) {
                 revert StalePrice(token, updatedAt);
             }
         } catch {
@@ -92,11 +86,10 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
     /**
      * @dev Update price feed for existing token
      */
-
     function updateTokenPriceFeed(address token, address newPriceFeed) external onlyOwner {
         if (!tokenFeeds[token].isActive) revert TokenNotSupported(token);
         if (newPriceFeed == address(0)) revert InvalidPriceFeed(newPriceFeed);
-        
+
         AggregatorV3Interface feed = AggregatorV3Interface(newPriceFeed);
 
         try feed.latestRoundData() returns (uint80, int256 price, uint256, uint256, uint80) {
@@ -141,9 +134,9 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
 
         TokenInfo memory tokenInfo = tokenFeeds[token];
 
-        (, int256 latestPrice, ,uint256 updatedAt,) = tokenInfo.priceFeed.latestRoundData();
+        (, int256 latestPrice,, uint256 updatedAt,) = tokenInfo.priceFeed.latestRoundData();
 
-        if(latestPrice <= 0) revert InvalidPrice(token, latestPrice);
+        if (latestPrice <= 0) revert InvalidPrice(token, latestPrice);
         if (block.timestamp - updatedAt > MAX_PRICE_AGE) {
             revert StalePrice(token, updatedAt);
         }
@@ -165,7 +158,7 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
         return price;
     }
     /**
-     * @dev Convert USD to Token 
+     * @dev Convert USD to Token
      */
 
     function convertUSDToToken(address token, uint256 usdAmount) external view override returns (uint256) {
@@ -181,7 +174,6 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
     /**
      * @dev Convert Token to USD
      */
-
     function convertTokenToUSD(address token, uint256 tokenAmount) external view override returns (uint256) {
         uint256 tokenPriceUSD = this.getTokenPriceInUSD(token);
         uint8 tokenDecimals = _getTokenDecimals(token);
@@ -216,13 +208,9 @@ contract PriceOracle is IPriceOracle, Ownable, Pausable, ReentrancyGuard{
     /**
      * @dev Get multiple token prices in batch
      */
-    function getMultipleTokenPrices(address[] calldata tokens) 
-        external 
-        view 
-        returns (uint256[] memory prices) 
-    {
+    function getMultipleTokenPrices(address[] calldata tokens) external view returns (uint256[] memory prices) {
         prices = new uint256[](tokens.length);
-        
+
         for (uint256 i = 0; i < tokens.length; i++) {
             prices[i] = this.getTokenPriceInUSD(tokens[i]);
         }

@@ -15,14 +15,14 @@ contract TestHelpers is Test {
     // Common test constants
     uint256 public constant PROCESSING_FEE = 250; // 2.5%
     uint256 public constant DEFAULT_PAYMENT_DURATION = 30 minutes;
-    
+
     // Price constants (8 decimals)
-    int256 public constant ETH_PRICE = 2000_00000000;   // $2000
-    int256 public constant USDC_PRICE = 1_00000000;     // $1
-    int256 public constant USDT_PRICE = 1_00000000;     // $1
+    int256 public constant ETH_PRICE = 2000_00000000; // $2000
+    int256 public constant USDC_PRICE = 1_00000000; // $1
+    int256 public constant USDT_PRICE = 1_00000000; // $1
     int256 public constant WBTC_PRICE = 45000_00000000; // $45000
-    int256 public constant DAI_PRICE = 1_00000000;      // $1
-    
+    int256 public constant DAI_PRICE = 1_00000000; // $1
+
     // Test addresses
     address public constant ETH_ADDRESS = address(0);
     address public owner = address(this);
@@ -33,7 +33,7 @@ contract TestHelpers is Test {
     address public customer2 = address(0x12);
     address public feeRecipient = address(0x99);
     address public nonOwner = address(0x999);
-    
+
     // Test data
     string public constant BUSINESS_NAME_1 = "Alice's Coffee Shop";
     string public constant BUSINESS_NAME_2 = "Bob's Electronics";
@@ -49,8 +49,8 @@ contract TestHelpers is Test {
         uint8 decimals;
         int256 price;
     }
-    
-    // Struct for merchant configuration  
+
+    // Struct for merchant configuration
     struct MerchantConfig {
         address merchantAddress;
         string businessName;
@@ -60,8 +60,8 @@ contract TestHelpers is Test {
     /**
      * @dev Deploy and configure a complete test environment
      */
-    function deployTestEnvironment() 
-        public 
+    function deployTestEnvironment()
+        public
         returns (
             PriceOracle oracle,
             MerchantRegistry registry,
@@ -73,26 +73,21 @@ contract TestHelpers is Test {
         // Deploy main contracts
         registry = new MerchantRegistry();
         oracle = new PriceOracle();
-        gateway = new PaymentGateway(
-            address(oracle),
-            address(registry),
-            PROCESSING_FEE,
-            feeRecipient
-        );
-        
+        gateway = new PaymentGateway(address(oracle), address(registry), PROCESSING_FEE, feeRecipient);
+
         // Deploy test tokens and price feeds
         (tokens, priceFeeds) = deployMockTokensAndFeeds();
-        
+
         // Setup price feeds in oracle
         oracle.addToken(ETH_ADDRESS, address(priceFeeds[0]), "ETH");
         oracle.addToken(address(tokens[0]), address(priceFeeds[1]), "USDC");
         oracle.addToken(address(tokens[1]), address(priceFeeds[2]), "USDT");
         oracle.addToken(address(tokens[2]), address(priceFeeds[3]), "WBTC");
         oracle.addToken(address(tokens[3]), address(priceFeeds[4]), "DAI");
-        
+
         // Register test merchants
         registerTestMerchants(registry);
-        
+
         // Fund test accounts
         fundTestAccounts(tokens);
     }
@@ -100,30 +95,23 @@ contract TestHelpers is Test {
     /**
      * @dev Deploy mock tokens and price feeds
      */
-    function deployMockTokensAndFeeds() 
-        public 
-        returns (MockERC20[] memory tokens, MockPriceFeed[] memory priceFeeds) 
-    {
+    function deployMockTokensAndFeeds() public returns (MockERC20[] memory tokens, MockPriceFeed[] memory priceFeeds) {
         TokenConfig[] memory configs = new TokenConfig[](5);
         configs[0] = TokenConfig("Ethereum", "ETH", 18, ETH_PRICE);
         configs[1] = TokenConfig("USD Coin", "USDC", 6, USDC_PRICE);
         configs[2] = TokenConfig("Tether USD", "USDT", 6, USDT_PRICE);
         configs[3] = TokenConfig("Wrapped Bitcoin", "WBTC", 8, WBTC_PRICE);
         configs[4] = TokenConfig("Dai Stablecoin", "DAI", 18, DAI_PRICE);
-        
+
         tokens = new MockERC20[](4); // ETH is not a token
         priceFeeds = new MockPriceFeed[](5); // Including ETH price feed
-        
+
         // Deploy ETH price feed
         priceFeeds[0] = new MockPriceFeed(8, ETH_PRICE);
-        
+
         // Deploy token contracts and price feeds
         for (uint256 i = 1; i < configs.length; i++) {
-            tokens[i-1] = new MockERC20(
-                configs[i].name,
-                configs[i].symbol,
-                configs[i].decimals
-            );
+            tokens[i - 1] = new MockERC20(configs[i].name, configs[i].symbol, configs[i].decimals);
             priceFeeds[i] = new MockPriceFeed(8, configs[i].price);
         }
     }
@@ -136,13 +124,10 @@ contract TestHelpers is Test {
         merchants[0] = MerchantConfig(merchant1, BUSINESS_NAME_1, EMAIL_1);
         merchants[1] = MerchantConfig(merchant2, BUSINESS_NAME_2, EMAIL_2);
         merchants[2] = MerchantConfig(merchant3, BUSINESS_NAME_3, EMAIL_3);
-        
+
         for (uint256 i = 0; i < merchants.length; i++) {
             vm.prank(merchants[i].merchantAddress);
-            registry.registerMerchant(
-                merchants[i].businessName,
-                merchants[i].email
-            );
+            registry.registerMerchant(merchants[i].businessName, merchants[i].email);
         }
     }
 
@@ -153,11 +138,11 @@ contract TestHelpers is Test {
         address[] memory accounts = new address[](2);
         accounts[0] = customer1;
         accounts[1] = customer2;
-        
+
         for (uint256 i = 0; i < accounts.length; i++) {
             // Fund with ETH
             vm.deal(accounts[i], 100 ether);
-            
+
             // Fund with tokens
             for (uint256 j = 0; j < tokens.length; j++) {
                 uint256 amount;
@@ -176,11 +161,7 @@ contract TestHelpers is Test {
     /**
      * @dev Setup token allowances for gateway contract
      */
-    function setupTokenAllowances(
-        MockERC20[] memory tokens,
-        address gateway,
-        address customer
-    ) public {
+    function setupTokenAllowances(MockERC20[] memory tokens, address gateway, address customer) public {
         vm.startPrank(customer);
         for (uint256 i = 0; i < tokens.length; i++) {
             tokens[i].approve(gateway, type(uint256).max);
@@ -191,12 +172,10 @@ contract TestHelpers is Test {
     /**
      * @dev Create a test payment
      */
-    function createTestPayment(
-        PaymentGateway gateway,
-        address merchant,
-        address token,
-        uint256 amountUSD
-    ) public returns (bytes32 paymentId) {
+    function createTestPayment(PaymentGateway gateway, address merchant, address token, uint256 amountUSD)
+        public
+        returns (bytes32 paymentId)
+    {
         vm.prank(merchant);
         return gateway.createPayment(token, amountUSD, DEFAULT_PAYMENT_DURATION);
     }
@@ -204,14 +183,9 @@ contract TestHelpers is Test {
     /**
      * @dev Process a test payment
      */
-    function processTestPayment(
-        PaymentGateway gateway,
-        bytes32 paymentId,
-        address customer,
-        uint256 amount
-    ) public {
+    function processTestPayment(PaymentGateway gateway, bytes32 paymentId, address customer, uint256 amount) public {
         IPaymentGateway.Payment memory payment = gateway.getPayment(paymentId);
-        
+
         if (payment.token == ETH_ADDRESS) {
             vm.prank(customer);
             gateway.processPayment{value: amount}(paymentId);
@@ -230,17 +204,13 @@ contract TestHelpers is Test {
         IPaymentGateway.PaymentStatus expectedStatus
     ) public view {
         IPaymentGateway.PaymentStatus actualStatus = gateway.getPaymentStatus(paymentId);
-        assertEq(uint(actualStatus), uint(expectedStatus));
+        assertEq(uint256(actualStatus), uint256(expectedStatus));
     }
 
     /**
      * @dev Assert token price
      */
-    function assertTokenPrice(
-        PriceOracle oracle,
-        address token,
-        uint256 expectedPrice
-    ) public view {
+    function assertTokenPrice(PriceOracle oracle, address token, uint256 expectedPrice) public view {
         uint256 actualPrice = oracle.getTokenPriceInUSD(token);
         assertEq(actualPrice, expectedPrice);
     }
@@ -248,11 +218,7 @@ contract TestHelpers is Test {
     /**
      * @dev Assert merchant is active
      */
-    function assertMerchantActive(
-        MerchantRegistry registry,
-        address merchant,
-        bool expectedActive
-    ) public view {
+    function assertMerchantActive(MerchantRegistry registry, address merchant, bool expectedActive) public view {
         bool actualActive = registry.isMerchantActive(merchant);
         assertEq(actualActive, expectedActive);
     }
@@ -267,11 +233,11 @@ contract TestHelpers is Test {
     /**
      * @dev Calculate expected token amount from USD
      */
-    function calculateExpectedTokenAmount(
-        uint256 usdAmount,
-        uint256 tokenPrice,
-        uint8 tokenDecimals
-    ) public pure returns (uint256) {
+    function calculateExpectedTokenAmount(uint256 usdAmount, uint256 tokenPrice, uint8 tokenDecimals)
+        public
+        pure
+        returns (uint256)
+    {
         // usdAmount and tokenPrice both have 8 decimals
         // Result should have tokenDecimals
         return (usdAmount * (10 ** tokenDecimals)) / tokenPrice;
@@ -280,10 +246,7 @@ contract TestHelpers is Test {
     /**
      * @dev Calculate expected fee amount
      */
-    function calculateExpectedFee(
-        uint256 amount,
-        uint256 feePercentage
-    ) public pure returns (uint256) {
+    function calculateExpectedFee(uint256 amount, uint256 feePercentage) public pure returns (uint256) {
         return (amount * feePercentage) / 10000;
     }
 
@@ -315,11 +278,7 @@ contract TestHelpers is Test {
     /**
      * @dev Generate random amount within range
      */
-    function generateRandomAmount(
-        uint256 seed,
-        uint256 min,
-        uint256 max
-    ) public pure returns (uint256) {
+    function generateRandomAmount(uint256 seed, uint256 min, uint256 max) public pure returns (uint256) {
         require(max > min, "Invalid range");
         return min + (uint256(keccak256(abi.encodePacked(seed))) % (max - min));
     }
@@ -327,15 +286,15 @@ contract TestHelpers is Test {
     /**
      * @dev Create multiple test merchants
      */
-    function createMultipleTestMerchants(
-        MerchantRegistry registry,
-        uint256 count
-    ) public returns (address[] memory merchants) {
+    function createMultipleTestMerchants(MerchantRegistry registry, uint256 count)
+        public
+        returns (address[] memory merchants)
+    {
         merchants = new address[](count);
-        
+
         for (uint256 i = 0; i < count; i++) {
             merchants[i] = generateRandomAddress(i + 1000);
-            
+
             vm.prank(merchants[i]);
             registry.registerMerchant(
                 string(abi.encodePacked("Business ", vm.toString(i))),
@@ -347,21 +306,16 @@ contract TestHelpers is Test {
     /**
      * @dev Create multiple test payments
      */
-    function createMultipleTestPayments(
-        PaymentGateway gateway,
-        address merchant,
-        uint256 count
-    ) public returns (bytes32[] memory paymentIds) {
+    function createMultipleTestPayments(PaymentGateway gateway, address merchant, uint256 count)
+        public
+        returns (bytes32[] memory paymentIds)
+    {
         paymentIds = new bytes32[](count);
-        
+
         vm.startPrank(merchant);
         for (uint256 i = 0; i < count; i++) {
             uint256 amountUSD = (i + 1) * 50_00000000; // $50, $100, $150, etc.
-            paymentIds[i] = gateway.createPayment(
-                ETH_ADDRESS,
-                amountUSD,
-                DEFAULT_PAYMENT_DURATION
-            );
+            paymentIds[i] = gateway.createPayment(ETH_ADDRESS, amountUSD, DEFAULT_PAYMENT_DURATION);
         }
         vm.stopPrank();
     }
@@ -369,20 +323,19 @@ contract TestHelpers is Test {
     /**
      * @dev Verify contract deployment
      */
-    function verifyContractDeployment(
-        PriceOracle oracle,
-        MerchantRegistry registry,
-        PaymentGateway gateway
-    ) public view {
+    function verifyContractDeployment(PriceOracle oracle, MerchantRegistry registry, PaymentGateway gateway)
+        public
+        view
+    {
         // Check that contracts are deployed
         assertTrue(address(oracle) != address(0));
         assertTrue(address(registry) != address(0));
         assertTrue(address(gateway) != address(0));
-        
+
         // Check that contracts are properly linked
         assertEq(address(gateway.priceOracle()), address(oracle));
         assertEq(address(gateway.merchantRegistry()), address(registry));
-        
+
         // Check initial state
         assertEq(gateway.processingFee(), PROCESSING_FEE);
         assertEq(gateway.feeRecipient(), feeRecipient);
@@ -391,28 +344,23 @@ contract TestHelpers is Test {
     /**
      * @dev Simulate price fluctuations
      */
-    function simulatePriceFluctuations(
-        MockPriceFeed[] memory priceFeeds,
-        uint256 volatilityPercent
-    ) public {
+    function simulatePriceFluctuations(MockPriceFeed[] memory priceFeeds, uint256 volatilityPercent) public {
         for (uint256 i = 0; i < priceFeeds.length; i++) {
-            (, int256 currentPrice, , , ) = priceFeeds[i].latestRoundData();
-            
+            (, int256 currentPrice,,,) = priceFeeds[i].latestRoundData();
+
             // Generate random price change within volatility range
             uint256 seed = block.timestamp + i;
             bool isIncrease = (seed % 2) == 0;
             uint256 changePercent = (seed % volatilityPercent) + 1;
-            
+
             int256 priceChange = (currentPrice * int256(changePercent)) / 100;
-            int256 newPrice = isIncrease ? 
-                currentPrice + priceChange : 
-                currentPrice - priceChange;
-            
+            int256 newPrice = isIncrease ? currentPrice + priceChange : currentPrice - priceChange;
+
             // Ensure price doesn't go negative
             if (newPrice <= 0) {
                 newPrice = currentPrice / 2;
             }
-            
+
             priceFeeds[i].setPrice(newPrice);
         }
     }
@@ -420,19 +368,14 @@ contract TestHelpers is Test {
     /**
      * @dev Create stress test scenario
      */
-    function createStressTestScenario(
-        PaymentGateway gateway,
-        address[] memory merchants,
-        uint256 paymentsPerMerchant
-    ) public returns (bytes32[][] memory allPaymentIds) {
+    function createStressTestScenario(PaymentGateway gateway, address[] memory merchants, uint256 paymentsPerMerchant)
+        public
+        returns (bytes32[][] memory allPaymentIds)
+    {
         allPaymentIds = new bytes32[][](merchants.length);
-        
+
         for (uint256 i = 0; i < merchants.length; i++) {
-            allPaymentIds[i] = createMultipleTestPayments(
-                gateway, 
-                merchants[i], 
-                paymentsPerMerchant
-            );
+            allPaymentIds[i] = createMultipleTestPayments(gateway, merchants[i], paymentsPerMerchant);
         }
     }
 
@@ -449,7 +392,7 @@ contract TestHelpers is Test {
                 uint256 seed = block.timestamp + i + j;
                 if ((seed % 100) < processingRate) {
                     IPaymentGateway.Payment memory payment = gateway.getPayment(allPaymentIds[i][j]);
-                    
+
                     if (payment.token == ETH_ADDRESS) {
                         vm.prank(customer1);
                         try gateway.processPayment{value: payment.amount}(allPaymentIds[i][j]) {
@@ -473,22 +416,18 @@ contract TestHelpers is Test {
     /**
      * @dev Generate test report
      */
-    function generateTestReport(
-        PaymentGateway gateway,
-        address[] memory merchants
-    ) public view returns (
-        uint256 totalPayments,
-        uint256 completedPayments,
-        uint256 pendingPayments,
-        uint256 expiredPayments
-    ) {
+    function generateTestReport(PaymentGateway gateway, address[] memory merchants)
+        public
+        view
+        returns (uint256 totalPayments, uint256 completedPayments, uint256 pendingPayments, uint256 expiredPayments)
+    {
         for (uint256 i = 0; i < merchants.length; i++) {
             bytes32[] memory merchantPayments = gateway.getMerchantPayments(merchants[i]);
             totalPayments += merchantPayments.length;
-            
+
             for (uint256 j = 0; j < merchantPayments.length; j++) {
                 IPaymentGateway.PaymentStatus status = gateway.getPaymentStatus(merchantPayments[j]);
-                
+
                 if (status == IPaymentGateway.PaymentStatus.Completed) {
                     completedPayments++;
                 } else if (status == IPaymentGateway.PaymentStatus.Pending) {
@@ -503,8 +442,8 @@ contract TestHelpers is Test {
     /**
      * @dev Setup realistic test environment with multiple tokens and merchants
      */
-    function setupRealisticTestEnvironment() 
-        public 
+    function setupRealisticTestEnvironment()
+        public
         returns (
             PriceOracle oracle,
             MerchantRegistry registry,
@@ -516,27 +455,27 @@ contract TestHelpers is Test {
     {
         // Deploy main environment
         (oracle, registry, gateway, tokens, priceFeeds) = deployTestEnvironment();
-        
+
         // Create additional merchants
         merchants = createMultipleTestMerchants(registry, 10);
-        
+
         // Add the original test merchants
         address[] memory allMerchants = new address[](merchants.length + 3);
         allMerchants[0] = merchant1;
         allMerchants[1] = merchant2;
         allMerchants[2] = merchant3;
-        
+
         for (uint256 i = 0; i < merchants.length; i++) {
             allMerchants[i + 3] = merchants[i];
         }
         merchants = allMerchants;
-        
+
         // Setup additional customers
         address[] memory additionalCustomers = new address[](5);
         for (uint256 i = 0; i < additionalCustomers.length; i++) {
             additionalCustomers[i] = generateRandomAddress(2000 + i);
             vm.deal(additionalCustomers[i], 50 ether);
-            
+
             for (uint256 j = 0; j < tokens.length; j++) {
                 uint256 amount;
                 if (tokens[j].decimals() == 6) {
@@ -548,7 +487,7 @@ contract TestHelpers is Test {
                 }
                 tokens[j].mint(additionalCustomers[i], amount);
             }
-            
+
             setupTokenAllowances(tokens, address(gateway), additionalCustomers[i]);
         }
     }
@@ -556,11 +495,7 @@ contract TestHelpers is Test {
     /**
      * @dev Assert approximate equality for amounts (allowing for small rounding differences)
      */
-    function assertApproxEqual(
-        uint256 actual, 
-        uint256 expected, 
-        uint256 tolerance
-    ) public pure {
+    function assertApproxEqual(uint256 actual, uint256 expected, uint256 tolerance) public pure {
         if (actual > expected) {
             assertLe(actual - expected, tolerance);
         } else {
@@ -571,11 +506,7 @@ contract TestHelpers is Test {
     /**
      * @dev Log test results for debugging
      */
-    function logTestResults(
-        string memory testName,
-        bool success,
-        uint256 gasUsed
-    ) public {
+    function logTestResults(string memory testName, bool success, uint256 gasUsed) public {
         if (success) {
             emit log_named_string("Correct Test", testName);
         } else {
@@ -587,18 +518,15 @@ contract TestHelpers is Test {
     /**
      * @dev Cleanup test environment
      */
-    function cleanupTestEnvironment(
-        PaymentGateway gateway,
-        address[] memory merchants
-    ) public {
+    function cleanupTestEnvironment(PaymentGateway gateway, address[] memory merchants) public {
         // Expire all pending payments for cleanup
         for (uint256 i = 0; i < merchants.length; i++) {
             bytes32[] memory merchantPayments = gateway.getMerchantPayments(merchants[i]);
-            
+
             if (merchantPayments.length > 0) {
                 // Fast forward to expire payments
                 fastForward(25 hours);
-                
+
                 // Cleanup expired payments
                 gateway.cleanupExpiredPayments(merchantPayments);
             }

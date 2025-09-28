@@ -12,7 +12,7 @@ import {PaymentUtils, SafeTransfer, MathUtils} from "./PaymentUtils.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PriceOracle} from "./PriceOracle.sol";
 /**
- * @title PaymentGateway 
+ * @title PaymentGateway
  * @dev Main contract for processing cryptocurrency payments
  */
 
@@ -30,11 +30,11 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
     mapping(bytes32 => Payment) private payments;
     mapping(address => bytes32[]) private merchantPayments;
     mapping(address => uint256) private nonces;
-    
+
     // Fee configuration
     uint256 public processingFee; // in basis points (10000 = 100%)
     address public feeRecipient;
-    
+
     // Payment settings
     uint256 public constant MIN_PAYMENT_DURATION = 5 minutes;
     uint256 public constant MAX_PAYMENT_DURATION = 24 hours;
@@ -42,7 +42,7 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
 
     // ETH address representation
     address private constant ETH_ADDRESS = address(0);
-    
+
     // Events
     event FeeUpdated(uint256 oldFee, uint256 newFee);
     event FeeRecipientUpdated(address oldRecipient, address newRecipient);
@@ -57,7 +57,6 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
     error PaymentHasExpired(bytes32 paymentId);
     error InvalidPaymentAmount(uint256 expected, uint256 provided);
     error InsufficientPayment(uint256 required, uint256 provided);
-    
 
     modifier onlyActiveMerchant() {
         if (!merchantRegistry.isMerchantActive(msg.sender)) {
@@ -72,12 +71,10 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
         }
         _;
     }
-    constructor(
-        address _priceOracle,
-        address _merchantRegistry,
-        uint256 _processingFee,
-        address _feeRecipient
-    ) Ownable(msg.sender){
+
+    constructor(address _priceOracle, address _merchantRegistry, uint256 _processingFee, address _feeRecipient)
+        Ownable(msg.sender)
+    {
         if (_priceOracle == address(0) || _merchantRegistry == address(0)) {
             revert InvalidFeeRecipient();
         }
@@ -88,40 +85,37 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
         merchantRegistry = IMerchantRegistry(_merchantRegistry);
         processingFee = _processingFee;
         feeRecipient = _feeRecipient;
-        
+
         _transferOwnership(msg.sender);
     }
 
     /**
      * @dev Create a new payment
      */
-    function createPayment(
-        address token,
-        uint256 amountUSD,
-        uint256 duration
-    ) external override onlyActiveMerchant whenNotPaused nonReentrant returns (bytes32 paymentId) {
+    function createPayment(address token, uint256 amountUSD, uint256 duration)
+        external
+        override
+        onlyActiveMerchant
+        whenNotPaused
+        nonReentrant
+        returns (bytes32 paymentId)
+    {
         // Validate inputs
         PaymentUtils.validatePaymentParams(token, amountUSD, duration);
 
         if (!priceOracle.isTokenSupported(token)) {
             revert PaymentUtils.InvalidToken();
         }
-        
+
         //Ensure duration is within the bounds
-        if(duration < MIN_PAYMENT_DURATION || duration > MAX_PAYMENT_DURATION) {
+        if (duration < MIN_PAYMENT_DURATION || duration > MAX_PAYMENT_DURATION) {
             duration = DEFAULT_PAYMENT_DURATION;
         }
 
         //Generate unique payment ID
         uint256 nonce = nonces[msg.sender];
         nonces[msg.sender]++;
-        paymentId = PaymentUtils.generatePaymentId(
-            msg.sender,
-            token,
-            amountUSD,
-            block.timestamp,
-            nonce
-        );
+        paymentId = PaymentUtils.generatePaymentId(msg.sender, token, amountUSD, block.timestamp, nonce);
 
         // Convert USD to token amount
         uint256 tokenAmount = priceOracle.convertUSDToToken(token, amountUSD);
@@ -132,7 +126,7 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
             customer: address(0),
             token: token,
             amount: tokenAmount,
-            amountUSD:amountUSD,
+            amountUSD: amountUSD,
             timestamp: uint64(block.timestamp),
             expiresAt: uint64(block.timestamp + duration),
             status: PaymentStatus.Pending
@@ -140,7 +134,7 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
 
         merchantPayments[msg.sender].push(paymentId);
 
-        emit PaymentCreated(paymentId,msg.sender,token,tokenAmount,amountUSD,uint64(block.timestamp));
+        emit PaymentCreated(paymentId, msg.sender, token, tokenAmount, amountUSD, uint64(block.timestamp));
 
         return paymentId;
     }
@@ -148,18 +142,25 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Process ETH payment
      */
-    function processPayment(bytes32 paymentId) external payable override validPayment(paymentId) whenNotPaused nonReentrant {
+    function processPayment(bytes32 paymentId)
+        external
+        payable
+        override
+        validPayment(paymentId)
+        whenNotPaused
+        nonReentrant
+    {
         Payment storage payment = payments[paymentId];
 
         // Validate payment state
         _validatePaymentForProcessing(payment);
 
-        if(payment.token != ETH_ADDRESS) {
+        if (payment.token != ETH_ADDRESS) {
             revert InvalidPaymentAmount(0, msg.value);
         }
 
         uint256 requiredAmount = payment.amount;
-        if(msg.value < requiredAmount) {
+        if (msg.value < requiredAmount) {
             revert InsufficientPayment(requiredAmount, msg.value);
         }
 
@@ -188,17 +189,23 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Process ERC20 token payment
      */
-    function processTokenPayment(bytes32 paymentId, uint256 amount) external override validPayment(paymentId) whenNotPaused nonReentrant {
+    function processTokenPayment(bytes32 paymentId, uint256 amount)
+        external
+        override
+        validPayment(paymentId)
+        whenNotPaused
+        nonReentrant
+    {
         Payment storage payment = payments[paymentId];
 
         _validatePaymentForProcessing(payment);
 
-        if(payment.token == ETH_ADDRESS) {
+        if (payment.token == ETH_ADDRESS) {
             revert InvalidPaymentAmount(0, amount);
         }
 
         uint256 requiredAmount = payment.amount;
-        if(amount < requiredAmount) {
+        if (amount < requiredAmount) {
             revert InsufficientPayment(requiredAmount, amount);
         }
 
@@ -212,7 +219,7 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
 
         // Transfer tokens
         IERC20 token = IERC20(payment.token);
-        
+
         if (feeAmount > 0) {
             token.safeTransferFrom(msg.sender, feeRecipient, feeAmount);
         }
@@ -224,7 +231,6 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Refund a payment
      */
-
     function refundPayment(bytes32 paymentId) external override validPayment(paymentId) whenNotPaused nonReentrant {
         Payment storage payment = payments[paymentId];
 
@@ -235,7 +241,7 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
 
         if (msg.sender != payment.merchant && !PaymentUtils.isExpired(payment.expiresAt)) {
             revert UnauthorizedMerchant(msg.sender);
-        }        
+        }
 
         // Update payment status
         payment.status = PaymentStatus.Refunded;
@@ -272,7 +278,7 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
      */
     function getPaymentStatus(bytes32 paymentId) external view returns (PaymentStatus) {
         Payment memory payment = payments[paymentId];
-        
+
         if (payment.paymentId == bytes32(0)) {
             revert PaymentNotFound(paymentId);
         }
@@ -287,11 +293,11 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
 
     function isPaymentValid(bytes32 paymentId) external view override returns (bool) {
         Payment memory payment = payments[paymentId];
-        
+
         if (payment.paymentId == bytes32(0)) return false;
         if (payment.status != PaymentStatus.Pending) return false;
         if (PaymentUtils.isExpired(payment.expiresAt)) return false;
-        
+
         return true;
     }
 
@@ -301,11 +307,11 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
     function cleanupExpiredPayments(bytes32[] memory paymentIds) external {
         for (uint256 i = 0; i < paymentIds.length; i++) {
             Payment storage payment = payments[paymentIds[i]];
-            
-            if (payment.paymentId != bytes32(0) && 
-                payment.status == PaymentStatus.Pending && 
-                PaymentUtils.isExpired(payment.expiresAt)) {
-                
+
+            if (
+                payment.paymentId != bytes32(0) && payment.status == PaymentStatus.Pending
+                    && PaymentUtils.isExpired(payment.expiresAt)
+            ) {
                 payment.status = PaymentStatus.Expired;
                 emit PaymentExpired(paymentIds[i]);
             }
@@ -331,10 +337,10 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
      */
     function updateFeeRecipient(address newRecipient) external onlyOwner {
         if (newRecipient == address(0)) revert InvalidFeeRecipient();
-        
+
         address oldRecipient = feeRecipient;
         feeRecipient = newRecipient;
-        
+
         emit FeeRecipientUpdated(oldRecipient, newRecipient);
     }
 
@@ -369,7 +375,7 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
             revert PaymentAlreadyProcessed(payment.paymentId);
         }
 
-        if(PaymentUtils.isExpired(payment.expiresAt)) {
+        if (PaymentUtils.isExpired(payment.expiresAt)) {
             revert PaymentHasExpired(payment.paymentId);
         }
     }
@@ -391,24 +397,24 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
     /**
      * @dev Get paginated merchant payments
      */
-    function getMerchantPaymentsPaginated(
-        address merchant,
-        uint256 offset,
-        uint256 limit
-    ) external view returns (bytes32[] memory paginatedPayments) {
+    function getMerchantPaymentsPaginated(address merchant, uint256 offset, uint256 limit)
+        external
+        view
+        returns (bytes32[] memory paginatedPayments)
+    {
         bytes32[] memory allPayments = merchantPayments[merchant];
-        
+
         if (offset >= allPayments.length) {
             return new bytes32[](0);
         }
-        
+
         uint256 end = offset + limit;
         if (end > allPayments.length) {
             end = allPayments.length;
         }
-        
+
         paginatedPayments = new bytes32[](end - offset);
-        
+
         for (uint256 i = offset; i < end; i++) {
             paginatedPayments[i - offset] = allPayments[i];
         }

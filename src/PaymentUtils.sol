@@ -9,7 +9,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
  * @title PaymentUtils
  * @dev Library containing utility functions for payment processing
  */
-
 library PaymentUtils {
     using SafeERC20 for IERC20;
 
@@ -21,26 +20,18 @@ library PaymentUtils {
     /**
      * @dev Generates a unique payment ID
      */
-    function generatePaymentId(
-        address merchant,
-        address token,
-        uint256 amount,
-        uint256 timestamp,
-        uint256 nonce
-    ) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(merchant, token, amount, timestamp, nonce)
-        );
+    function generatePaymentId(address merchant, address token, uint256 amount, uint256 timestamp, uint256 nonce)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(merchant, token, amount, timestamp, nonce));
     }
 
-    /** 
+    /**
      * @dev Validates payment parameters
      */
-    function validatePaymentParams(
-        address token,
-        uint256 amountUSD,
-        uint256 duration
-    ) internal pure {
+    function validatePaymentParams(address token, uint256 amountUSD, uint256 duration) internal pure {
         if (token == address(0)) revert InvalidToken();
         if (amountUSD == 0) revert InvalidAmount();
         if (duration == 0) revert InvalidDuration();
@@ -64,7 +55,7 @@ library PaymentUtils {
      * @dev Safe transfer of ETH
      */
     function safeTransferETH(address to, uint256 amount) internal {
-        (bool success, ) = to.call{value: amount}("");
+        (bool success,) = to.call{value: amount}("");
         require(success, "ETH transfer failed");
     }
 
@@ -73,9 +64,9 @@ library PaymentUtils {
      */
     function safeTransferToken(address token, address from, address to, uint256 amount) internal {
         if (from == address(this)) {
-            IERC20(token).safeTransfer(to,amount);
-        }else {
-            IERC20(token).safeTransferFrom(from,to,amount);
+            IERC20(token).safeTransfer(to, amount);
+        } else {
+            IERC20(token).safeTransferFrom(from, to, amount);
         }
     }
 
@@ -92,12 +83,7 @@ library PaymentUtils {
     /**
      * @dev Validates token allowance for spending
      */
-    function validateAllowance(
-        address token,
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal view {
+    function validateAllowance(address token, address owner, address spender, uint256 amount) internal view {
         if (token != address(0)) {
             uint256 allowance = IERC20(token).allowance(owner, spender);
             if (allowance < amount) revert InsufficientBalance();
@@ -109,7 +95,6 @@ library PaymentUtils {
  * @title SafeTransfer
  * @dev Library for safe transfer of ETH and ERC20 tokens
  */
-
 library SafeTransfer {
     using SafeERC20 for IERC20;
 
@@ -124,18 +109,14 @@ library SafeTransfer {
         if (to == address(0)) revert InvalidRecipient();
         if (address(this).balance < amount) revert InsufficientBalance();
 
-        (bool success, ) = to.call{value: amount}("");
+        (bool success,) = to.call{value: amount}("");
         if (!success) revert TransferFailed();
     }
 
     /**
      * @dev Transfer ERC20 tokens with checks
      */
-    function transferToken(
-        address token,
-        address to,
-        uint256 amount
-    ) internal {
+    function transferToken(address token, address to, uint256 amount) internal {
         if (to == address(0)) revert InvalidRecipient();
         if (token == address(0)) revert InvalidRecipient();
 
@@ -145,15 +126,10 @@ library SafeTransfer {
     /**
      * @dev Transfer tokens from on address to another with checks
      */
-    function transferTokenFrom(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) internal {
+    function transferTokenFrom(address token, address from, address to, uint256 amount) internal {
         if (to == address(0) || from == address(0)) revert InvalidRecipient();
         if (token == address(0)) revert InvalidRecipient();
-        
+
         IERC20(token).safeTransferFrom(from, to, amount);
     }
 }
@@ -194,11 +170,7 @@ library MathUtils {
     /**
      * @dev Scale amount by decimals difference
      */
-    function scaleAmount(
-        uint256 amount,
-        uint8 fromDecimals,
-        uint8 toDecimals
-    ) internal pure returns (uint256) {
+    function scaleAmount(uint256 amount, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256) {
         if (fromDecimals == toDecimals) {
             return amount;
         } else if (fromDecimals < toDecimals) {

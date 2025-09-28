@@ -3,12 +3,10 @@
 pragma solidity ^0.8.19;
 
 /**
- * @title IPaymentGateway 
+ * @title IPaymentGateway
  * @dev Interface for the main payment gateway contract
  */
-
-interface IPaymentGateway{
-
+interface IPaymentGateway {
     struct Payment {
         bytes32 paymentId;
         address merchant;
@@ -38,21 +36,13 @@ interface IPaymentGateway{
         uint64 expiresAt
     );
 
-    event PaymentCompleted(
-        bytes32 indexed paymentId,
-        address indexed customer,
-        uint256 actualAmount
-    );
+    event PaymentCompleted(bytes32 indexed paymentId, address indexed customer, uint256 actualAmount);
 
     event PaymentFailed(bytes32 indexed paymentId, string reason);
 
     event PaymentExpired(bytes32 indexed paymentId);
 
-    event PaymentRefunded(
-        bytes32 indexed paymentId,
-        address indexed customer,
-        uint256 amount
-    );
+    event PaymentRefunded(bytes32 indexed paymentId, address indexed customer, uint256 amount);
 
     function createPayment(address token, uint256 amountUSD, uint256 duration) external returns (bytes32 paymentId);
 
@@ -79,9 +69,9 @@ interface IPriceOracle {
     function getTokenPriceInUSD(address token) external view returns (uint256);
 
     function convertUSDToToken(address token, uint256 usdAmount) external view returns (uint256);
-    
+
     function convertTokenToUSD(address token, uint256 tokenAmount) external view returns (uint256);
-    
+
     function isTokenSupported(address token) external view returns (bool);
 }
 
