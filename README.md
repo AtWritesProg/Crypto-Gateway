@@ -1,66 +1,82 @@
-## Foundry
+# WalletWave Frontend
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+React frontend for the WalletWave crypto payment gateway.
 
-Foundry consists of:
+## Features
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+- 🔐 Wallet connection with RainbowKit
+- 💼 Merchant dashboard for payment management
+- 💳 Customer payment interface
+- 📊 Real-time payment status tracking
+- ⏱️ Countdown timer for payment expiration
+- 📱 Responsive design
 
-## Documentation
+## Setup
 
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+1. Install dependencies:
+```bash
+npm install
 ```
 
-### Test
+2. Get a WalletConnect Project ID:
+   - Visit https://cloud.walletconnect.com
+   - Create a free account
+   - Create a new project
+   - Copy the Project ID
 
-```shell
-$ forge test
+3. Update the Project ID in `src/wagmi.ts`:
+```typescript
+projectId: 'YOUR_PROJECT_ID'
 ```
 
-### Format
+## Development
 
-```shell
-$ forge fmt
+Run the development server:
+```bash
+npm run dev
 ```
 
-### Gas Snapshots
+The app will be available at http://localhost:5173
 
-```shell
-$ forge snapshot
-```
+## Deployed Contracts (Sepolia)
 
-### Anvil
+- **PaymentGateway**: `0xfa36b06e660a36329b4424421ec91760aeb6650b`
+- **MerchantRegistry**: `0x2b79ee4e893f35794b2ef28a32fb3dc82f63f08d`
+- **PriceOracle**: `0xc47478e1b22c60c307f1d3cbf9a3dd226062ebca`
 
-```shell
-$ anvil
-```
+## How to Use
 
-### Deploy
+### For Merchants
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+1. Connect your wallet
+2. Register as a merchant (one-time)
+3. Create payment requests with:
+   - USD amount
+   - Token (ETH, BTC, or USDC)
+   - Expiration time
+4. Share payment link with customers
+5. Track payment status in your dashboard
 
-### Cast
+### For Customers
 
-```shell
-$ cast <subcommand>
-```
+1. Connect your wallet
+2. Open payment link shared by merchant
+3. Review payment details
+4. Complete payment
+5. Receive confirmation
 
-### Help
+## Tech Stack
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- React + TypeScript
+- Vite
+- Wagmi v2
+- RainbowKit
+- Ethers.js v6
+- React Router
+- TanStack Query
+
+## Network
+
+Currently deployed on **Sepolia Testnet**. Get test ETH from:
+- https://sepoliafaucet.com/
+- https://www.alchemy.com/faucets/ethereum-sepolia
