@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAccount, useWriteContract, useReadContract } from 'wagmi'
-import { parseEther } from 'viem'
+import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
 import { CONTRACTS, TOKENS } from '../contracts/config'
 import PaymentGatewayABI from '../contracts/PaymentGateway.json'
 import MerchantRegistryABI from '../contracts/MerchantRegistry.json'
@@ -10,20 +9,33 @@ export default function MerchantDashboard() {
   const [businessName, setBusinessName] = useState('')
   const [email, setEmail] = useState('')
   const [amountUSD, setAmountUSD] = useState('')
-  const [selectedToken, setSelectedToken] = useState(TOKENS.ETH)
+  const [selectedToken, setSelectedToken] = useState<string>(TOKENS.ETH)
   const [duration, setDuration] = useState('1800') // 30 minutes default
-  const [createdPaymentId, setCreatedPaymentId] = useState<string>('')
+  const [showRegistration, setShowRegistration] = useState(false)
 
-  const { writeContract: registerMerchant, isPending: isRegistering } = useWriteContract()
+  const { writeContract: registerMerchant, isPending: isRegistering, data: registerHash } = useWriteContract()
   const { writeContract: createPayment, isPending: isCreating } = useWriteContract()
 
+  // Wait for registration transaction
+  const { isSuccess: isRegisterSuccess } = useWaitForTransactionReceipt({
+    hash: registerHash,
+  })
+
   // Check if merchant is registered
-  const { data: isMerchantActive } = useReadContract({
+  const { data: isMerchantActive, refetch: refetchMerchantStatus } = useReadContract({
     address: CONTRACTS.MerchantRegistry as `0x${string}`,
     abi: MerchantRegistryABI,
     functionName: 'isMerchantActive',
     args: [address],
   })
+
+  // Auto-refetch merchant status after successful registration
+  useEffect(() => {
+    if (isRegisterSuccess) {
+      refetchMerchantStatus()
+      setShowRegistration(false)
+    }
+  }, [isRegisterSuccess, refetchMerchantStatus])
 
   // Get merchant payments
   const { data: merchantPayments, refetch: refetchPayments } = useReadContract({
@@ -53,7 +65,13 @@ export default function MerchantDashboard() {
 
   const handleCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isConnected || !isMerchantActive) return
+    if (!isConnected) return
+
+    // If not registered, show registration form first
+    if (!isMerchantActive) {
+      setShowRegistration(true)
+      return
+    }
 
     try {
       // Convert USD to 8 decimals (contract expects amountUSD with 8 decimals)
@@ -64,8 +82,10 @@ export default function MerchantDashboard() {
         functionName: 'createPayment',
         args: [selectedToken, usdAmount, Number(duration)],
       })
-      alert('Payment created! Check your payments list.')
+      alert('Payment link created! Check your requests below.')
       refetchPayments()
+      // Clear form
+      setAmountUSD('')
     } catch (error) {
       console.error('Create payment error:', error)
       alert('Payment creation failed')
@@ -76,31 +96,34 @@ export default function MerchantDashboard() {
     return (
       <div className="dashboard-container">
         <div className="connect-prompt">
-          <h2>Connect Your Wallet</h2>
-          <p>Please connect your wallet to access the merchant dashboard.</p>
+          <h2>Welcome to WalletWave</h2>
+          <p>Connect your wallet to start requesting payments</p>
+          <p className="subtitle">Works like PayTM/GPay - Request money with crypto!</p>
         </div>
       </div>
     )
   }
 
-  if (!isMerchantActive) {
+  // Show registration modal when needed
+  if (showRegistration && !isMerchantActive) {
     return (
       <div className="dashboard-container">
         <div className="register-section">
-          <h2>Register as Merchant</h2>
+          <h2>Quick Setup - Almost There!</h2>
+          <p>Before creating your first payment request, we need a few details:</p>
           <form onSubmit={handleRegister} className="form">
             <div className="form-group">
-              <label>Business Name</label>
+              <label>Your Name / Business Name</label>
               <input
                 type="text"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 required
-                placeholder="Enter your business name"
+                placeholder="John Doe or Your Business"
               />
             </div>
             <div className="form-group">
-              <label>Email</label>
+              <label>Email (for notifications)</label>
               <input
                 type="email"
                 value={email}
@@ -109,9 +132,14 @@ export default function MerchantDashboard() {
                 placeholder="your@email.com"
               />
             </div>
-            <button type="submit" disabled={isRegistering} className="btn-primary">
-              {isRegistering ? 'Registering...' : 'Register as Merchant'}
-            </button>
+            <div className="form-actions">
+              <button type="button" onClick={() => setShowRegistration(false)} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" disabled={isRegistering} className="btn-primary">
+                {isRegistering ? 'Setting up...' : 'Complete Setup'}
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -121,16 +149,17 @@ export default function MerchantDashboard() {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h2>Merchant Dashboard</h2>
-        <p>Wallet: {address}</p>
+        <h2>Request Money</h2>
+        <p className="wallet-info">Your Wallet: {address?.slice(0, 6)}...{address?.slice(-4)}</p>
       </div>
 
       <div className="create-payment-section">
-        <h3>Create New Payment</h3>
+        <h3>Create Payment Request</h3>
         <form onSubmit={handleCreatePayment} className="form">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Amount (USD)</label>
+          <div className="form-group amount-group">
+            <label>How much do you want to receive?</label>
+            <div className="amount-input-wrapper">
+              <span className="currency-symbol">$</span>
               <input
                 type="number"
                 step="0.01"
@@ -138,34 +167,43 @@ export default function MerchantDashboard() {
                 onChange={(e) => setAmountUSD(e.target.value)}
                 required
                 placeholder="0.00"
+                className="amount-input"
               />
+              <span className="currency-label">USD</span>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Accept Payment In</label>
+              <select value={selectedToken} onChange={(e) => setSelectedToken(e.target.value)} className="token-select">
+                <option value={TOKENS.ETH}>Ethereum (ETH)</option>
+                <option value={TOKENS.BTC}>Bitcoin (BTC)</option>
+                <option value={TOKENS.USDC}>USD Coin (USDC)</option>
+              </select>
             </div>
             <div className="form-group">
-              <label>Token</label>
-              <select value={selectedToken} onChange={(e) => setSelectedToken(e.target.value)}>
-                <option value={TOKENS.ETH}>ETH</option>
-                <option value={TOKENS.BTC}>BTC</option>
-                <option value={TOKENS.USDC}>USDC</option>
+              <label>Link Expires In</label>
+              <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                <option value="300">5 minutes</option>
+                <option value="1800">30 minutes</option>
+                <option value="3600">1 hour</option>
+                <option value="86400">24 hours</option>
               </select>
             </div>
           </div>
-          <div className="form-group">
-            <label>Duration (seconds)</label>
-            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
-              <option value="300">5 minutes</option>
-              <option value="1800">30 minutes</option>
-              <option value="3600">1 hour</option>
-              <option value="86400">24 hours</option>
-            </select>
-          </div>
-          <button type="submit" disabled={isCreating} className="btn-primary">
-            {isCreating ? 'Creating...' : 'Create Payment'}
+
+          <button type="submit" disabled={isCreating} className="btn-primary btn-large">
+            {isCreating ? 'Creating Link...' : '🔗 Generate Payment Link'}
           </button>
+          {!isMerchantActive && (
+            <p className="info-text">First time? We'll quickly set up your account.</p>
+          )}
         </form>
       </div>
 
       <div className="payments-section">
-        <h3>Your Payments</h3>
+        <h3>Your Payment Requests</h3>
         {merchantPayments && (merchantPayments as string[]).length > 0 ? (
           <div className="payments-list">
             {(merchantPayments as string[]).map((paymentId: string) => (
@@ -173,7 +211,10 @@ export default function MerchantDashboard() {
             ))}
           </div>
         ) : (
-          <p className="no-payments">No payments yet. Create one above!</p>
+          <div className="no-payments">
+            <p>No payment requests yet.</p>
+            <p className="subtitle">Create your first payment request above!</p>
+          </div>
         )}
       </div>
     </div>
@@ -188,29 +229,85 @@ function PaymentCard({ paymentId }: { paymentId: string }) {
     args: [paymentId],
   })
 
+  const [showQR, setShowQR] = useState(false)
+  const [copied, setCopied] = useState(false)
+
   if (!payment) return null
 
   const paymentData = payment as any
   const paymentUrl = `${window.location.origin}/pay/${paymentId}`
 
+  const statusLabels = ['Pending', 'Completed', 'Failed', 'Expired', 'Refunded']
+  const status = statusLabels[paymentData.status]
+
+  const getTokenSymbol = (tokenAddress: string) => {
+    if (tokenAddress === TOKENS.ETH) return 'ETH'
+    if (tokenAddress === TOKENS.BTC) return 'BTC'
+    if (tokenAddress === TOKENS.USDC) return 'USDC'
+    return 'Unknown'
+  }
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(paymentUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Payment Request',
+          text: `Please pay $${(Number(paymentData.amountUSD) / 1e8).toFixed(2)} via WalletWave`,
+          url: paymentUrl,
+        })
+      } catch (err) {
+        console.log('Share failed:', err)
+      }
+    } else {
+      handleCopyLink()
+    }
+  }
+
   return (
-    <div className="payment-card">
-      <div className="payment-info">
-        <p><strong>Payment ID:</strong> {paymentId.slice(0, 10)}...</p>
-        <p><strong>Amount USD:</strong> ${(Number(paymentData.amountUSD) / 1e8).toFixed(2)}</p>
-        <p><strong>Status:</strong> {['Pending', 'Completed', 'Failed', 'Expired', 'Refunded'][paymentData.status]}</p>
+    <div className={`payment-card status-${status.toLowerCase()}`}>
+      <div className="payment-card-header">
+        <div className="amount-section">
+          <span className="amount">${(Number(paymentData.amountUSD) / 1e8).toFixed(2)}</span>
+          <span className="token">{getTokenSymbol(paymentData.token)}</span>
+        </div>
+        <span className={`status-badge status-${status.toLowerCase()}`}>{status}</span>
       </div>
-      <div className="payment-actions">
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(paymentUrl)
-            alert('Payment URL copied!')
-          }}
-          className="btn-secondary"
-        >
-          Copy Payment Link
-        </button>
+
+      <div className="payment-details">
+        <div className="detail-row">
+          <span className="label">Request ID:</span>
+          <span className="value">{paymentId.slice(0, 10)}...{paymentId.slice(-8)}</span>
+        </div>
+        {paymentData.customer !== '0x0000000000000000000000000000000000000000' && (
+          <div className="detail-row">
+            <span className="label">Paid by:</span>
+            <span className="value">{paymentData.customer.slice(0, 6)}...{paymentData.customer.slice(-4)}</span>
+          </div>
+        )}
       </div>
+
+      {status === 'Pending' && (
+        <div className="payment-actions">
+          <button onClick={handleCopyLink} className="btn-action">
+            {copied ? '✓ Copied!' : '📋 Copy Link'}
+          </button>
+          <button onClick={handleShare} className="btn-action btn-primary">
+            📤 Share Link
+          </button>
+        </div>
+      )}
+
+      {status === 'Completed' && (
+        <div className="payment-success">
+          ✓ Payment Received
+        </div>
+      )}
     </div>
   )
 }

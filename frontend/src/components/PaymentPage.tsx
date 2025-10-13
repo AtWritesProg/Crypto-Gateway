@@ -94,17 +94,18 @@ export default function PaymentPage() {
     return (
       <div className="payment-container">
         <div className="payment-lookup">
-          <h2>Make a Payment</h2>
-          <p>Enter a payment ID to proceed:</p>
+          <h2>Pay Someone</h2>
+          <p>Enter the payment link or ID you received:</p>
           <div className="form">
             <input
               type="text"
-              placeholder="0x..."
+              placeholder="Paste payment ID here (0x...)"
               value={manualPaymentId}
               onChange={(e) => setManualPaymentId(e.target.value)}
               className="payment-id-input"
             />
           </div>
+          <p className="hint">💡 Or click on a payment link shared with you</p>
         </div>
       </div>
     )
@@ -130,34 +131,36 @@ export default function PaymentPage() {
   return (
     <div className="payment-container">
       <div className="payment-details">
-        <h2>Payment Details</h2>
+        <h2>Payment Request</h2>
 
         <div className="payment-status-badge" data-status={status.toLowerCase()}>
           {status}
         </div>
 
+        <div className="payment-amount-section">
+          <p className="amount-label">You're being asked to pay</p>
+          <h1 className="payment-amount">${usdAmount}</h1>
+          <p className="crypto-amount">≈ {tokenAmount} {tokenSymbol}</p>
+        </div>
+
         <div className="payment-info-grid">
           <div className="info-item">
-            <label>Amount</label>
-            <p className="amount-display">{tokenAmount} {tokenSymbol}</p>
-            <p className="usd-display">${usdAmount} USD</p>
-          </div>
-
-          <div className="info-item">
-            <label>Merchant</label>
-            <p className="address">{paymentData.merchant.slice(0, 6)}...{paymentData.merchant.slice(-4)}</p>
+            <label>Receiving</label>
+            <p className="address">
+              {paymentData.merchant.slice(0, 6)}...{paymentData.merchant.slice(-4)}
+            </p>
           </div>
 
           {paymentData.customer !== '0x0000000000000000000000000000000000000000' && (
             <div className="info-item">
-              <label>Customer</label>
+              <label>Paid by</label>
               <p className="address">{paymentData.customer.slice(0, 6)}...{paymentData.customer.slice(-4)}</p>
             </div>
           )}
 
           {status === 'Pending' && timeLeft > 0 && (
             <div className="info-item">
-              <label>Time Remaining</label>
+              <label>Link expires in</label>
               <p className="timer">{formatTime(timeLeft)}</p>
             </div>
           )}
@@ -166,14 +169,14 @@ export default function PaymentPage() {
         {status === 'Pending' && isValid && (
           <div className="payment-actions">
             {!isConnected ? (
-              <p className="warning">Please connect your wallet to make payment</p>
+              <p className="warning">🔐 Connect your wallet to pay</p>
             ) : (
               <button
                 onClick={handlePayment}
                 disabled={isProcessing || isProcessingToken}
                 className="btn-primary btn-large"
               >
-                {isProcessing || isProcessingToken ? 'Processing...' : `Pay ${tokenAmount} ${tokenSymbol}`}
+                {isProcessing || isProcessingToken ? 'Processing Payment...' : `💸 Pay ${tokenAmount} ${tokenSymbol}`}
               </button>
             )}
           </div>
@@ -188,8 +191,8 @@ export default function PaymentPage() {
 
         {status === 'Expired' && (
           <div className="error-message">
-            <h3>⏰ Payment Expired</h3>
-            <p>This payment link has expired. Please request a new one.</p>
+            <h3>⏰ Link Expired</h3>
+            <p>This payment link has expired. Please ask for a new one.</p>
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@ import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
 import { BrowserRouter } from 'react-router-dom'
 import { config } from './wagmi'
 import './index.css'
+import './lovable-styles.css'
 import '@rainbow-me/rainbowkit/styles.css'
 import App from './App.tsx'
 

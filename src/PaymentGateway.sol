@@ -40,8 +40,8 @@ contract PaymentGateway is IPaymentGateway, Ownable, Pausable, ReentrancyGuard {
     uint256 public constant MAX_PAYMENT_DURATION = 24 hours;
     uint256 public constant DEFAULT_PAYMENT_DURATION = 30 minutes;
 
-    // ETH address representation
-    address private constant ETH_ADDRESS = address(0);
+    // ETH address representation - must match deployment script
+    address private constant ETH_ADDRESS = address(0x1111111111111111111111111111111111111111);
 
     // Events
     event FeeUpdated(uint256 oldFee, uint256 newFee);
