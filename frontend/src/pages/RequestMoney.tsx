@@ -14,7 +14,7 @@ import MerchantRegistryABI from '../contracts/MerchantRegistry.json'
 const RequestMoney = () => {
   const { address, isConnected } = useAccount()
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState(TOKENS.ETH);
+  const [currency, setCurrency] = useState<string>(TOKENS.ETH);
   const [validity, setValidity] = useState("1800");
   const [showRegistration, setShowRegistration] = useState(false)
   const [businessName, setBusinessName] = useState('')
@@ -155,7 +155,7 @@ const RequestMoney = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="max-w-md mx-auto"
           >
-            <div className="glass-strong rounded-3xl p-8 shadow-elevated border-glow">
+            <div className="glass-strong rounded-3xl p-8 shadow-elevated border border-white/10">
               <h2 className="text-2xl font-bold gradient-text mb-4">Quick Setup - Almost There!</h2>
               <p className="text-muted-foreground mb-6">Before creating your first payment request, we need a few details:</p>
               <form onSubmit={handleRegister} className="space-y-4">
@@ -214,11 +214,11 @@ const RequestMoney = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-5xl md:text-7xl font-bold mb-4">
-            <span className="gradient-text text-glow">✨ Request Money</span>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            <span className="gradient-text">Request Money</span>
           </h1>
-          <p className="text-xl text-muted-foreground flex items-center justify-center gap-2">
-            💎 Your Wallet: <span className="font-mono">{address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}</span>
+          <p className="text-lg text-muted-foreground">
+            Your Wallet: <span className="font-mono">{address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}</span>
           </p>
         </motion.div>
 
@@ -229,8 +229,8 @@ const RequestMoney = () => {
           transition={{ delay: 0.2 }}
           className="max-w-2xl mx-auto mb-16"
         >
-          <div className="glass-strong rounded-3xl p-8 shadow-elevated border-glow">
-            <h2 className="text-2xl font-bold gradient-text mb-6 uppercase tracking-wider">
+          <div className="glass-strong rounded-3xl p-8 shadow-elevated border border-white/10">
+            <h2 className="text-xl font-bold text-foreground mb-6">
               Create New Request
             </h2>
 
@@ -242,41 +242,43 @@ const RequestMoney = () => {
             {/* Currency & Validity */}
             <div className="grid md:grid-cols-2 gap-4 mb-8">
               {/* Currency Select */}
-              <div className="glass rounded-xl p-4">
-                <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                  Get paid in:
+              <div>
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  Get paid in
                 </label>
                 <div className="relative">
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full glass-strong rounded-lg px-4 py-3 appearance-none cursor-pointer font-bold text-lg bg-transparent border border-white/10 focus:border-primary transition-all outline-none"
+                    className="w-full glass-strong rounded-lg px-4 py-3 appearance-none cursor-pointer font-medium text-base border border-white/10 focus:border-primary transition-all outline-none text-foreground"
+                    style={{ colorScheme: 'dark' }}
                   >
-                    <option value={TOKENS.ETH}>🟣 ETH</option>
-                    <option value={TOKENS.BTC}>🟠 BTC</option>
-                    <option value={TOKENS.USDC}>🔵 USDC</option>
+                    <option value={TOKENS.ETH} style={{ background: 'hsl(228, 30%, 15%)', color: 'white' }}>ETH</option>
+                    <option value={TOKENS.BTC} style={{ background: 'hsl(228, 30%, 15%)', color: 'white' }}>BTC</option>
+                    <option value={TOKENS.USDC} style={{ background: 'hsl(228, 30%, 15%)', color: 'white' }}>USDC</option>
                   </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 pointer-events-none text-primary" />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-muted-foreground" />
                 </div>
               </div>
 
               {/* Validity Select */}
-              <div className="glass rounded-xl p-4">
-                <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                  Valid for:
+              <div>
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  Valid for
                 </label>
                 <div className="relative">
                   <select
                     value={validity}
                     onChange={(e) => setValidity(e.target.value)}
-                    className="w-full glass-strong rounded-lg px-4 py-3 appearance-none cursor-pointer font-bold text-lg bg-transparent border border-white/10 focus:border-cyan transition-all outline-none"
+                    className="w-full glass-strong rounded-lg px-4 py-3 appearance-none cursor-pointer font-medium text-base border border-white/10 focus:border-primary transition-all outline-none text-foreground"
+                    style={{ colorScheme: 'dark' }}
                   >
-                    <option value="300">⏰ 5 min</option>
-                    <option value="1800">⏰ 30 min</option>
-                    <option value="3600">⏰ 1 hour</option>
-                    <option value="86400">⏰ 24 hours</option>
+                    <option value="300" style={{ background: 'hsl(228, 30%, 15%)', color: 'white' }}>5 minutes</option>
+                    <option value="1800" style={{ background: 'hsl(228, 30%, 15%)', color: 'white' }}>30 minutes</option>
+                    <option value="3600" style={{ background: 'hsl(228, 30%, 15%)', color: 'white' }}>1 hour</option>
+                    <option value="86400" style={{ background: 'hsl(228, 30%, 15%)', color: 'white' }}>24 hours</option>
                   </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 pointer-events-none text-cyan" />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-muted-foreground" />
                 </div>
               </div>
             </div>
@@ -284,12 +286,12 @@ const RequestMoney = () => {
             {/* Generate Button */}
             <GradientButton
               size="xl"
-              icon={<Zap className="h-6 w-6" />}
+              icon={<Zap className="h-5 w-5" />}
               onClick={handleGenerateLink}
               className="w-full"
               disabled={isCreating}
             >
-              {isCreating ? 'CREATING LINK...' : 'GENERATE PAYMENT LINK'}
+              {isCreating ? 'Creating...' : 'Generate Payment Link'}
             </GradientButton>
 
             {!isMerchantActive && (
@@ -306,7 +308,7 @@ const RequestMoney = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-3xl font-bold gradient-text-accent mb-8 text-center uppercase tracking-wider"
+            className="text-2xl font-bold text-foreground mb-8 text-center"
           >
             Your Requests
           </motion.h2>

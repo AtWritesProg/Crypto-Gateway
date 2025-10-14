@@ -193,4 +193,30 @@ All colors MUST be HSL.
     background-size: 1000px 100%;
     animation: shimmer 3s infinite;
   }
+
+  /* Custom Select Dropdown Styling */
+  select {
+    cursor: pointer;
+    color: hsl(var(--foreground));
+  }
+
+  select option {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    padding: 0.75rem;
+    font-weight: bold;
+  }
+
+  select:focus {
+    outline: none;
+    border-color: hsl(var(--primary));
+  }
+
+  /* Ensure proper contrast for select options */
+  select option:hover,
+  select option:focus,
+  select option:checked {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--cyan)));
+    color: white;
+  }
 }

@@ -9,6 +9,7 @@ const GlassNavbar = () => {
   const navItems = [
     { path: "/", label: "Request" },
     { path: "/pay", label: "Pay" },
+    { path: "/settings", label: "Settings" },
   ];
 
   return (
