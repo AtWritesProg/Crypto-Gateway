@@ -23,8 +23,8 @@ contract TestHelpers is Test {
     int256 public constant WBTC_PRICE = 45000_00000000; // $45000
     int256 public constant DAI_PRICE = 1_00000000; // $1
 
-    // Test addresses
-    address public constant ETH_ADDRESS = address(0);
+    // Test addresses (must match PriceOracle.sol)
+    address public constant ETH_ADDRESS = address(0x1111111111111111111111111111111111111111);
     address public owner = address(this);
     address public merchant1 = address(0x1);
     address public merchant2 = address(0x2);
