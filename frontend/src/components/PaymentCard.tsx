@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { Copy, Share2, RefreshCw, Check, Clock, X } from "lucide-react";
-import { useState } from "react";
 import toast from "react-hot-toast";
 
 interface PaymentCardProps {
@@ -24,8 +23,6 @@ const PaymentCard = ({
   onShare,
   onResend,
 }: PaymentCardProps) => {
-  const [isFlipped, setIsFlipped] = useState(false);
-
   const currencyColors = {
     ETH: "from-primary to-cyan",
     BTC: "from-orange-500 to-yellow-500",
@@ -83,19 +80,13 @@ const PaymentCard = ({
       whileHover={{ y: -5 }}
       className="perspective-1000"
     >
-      <motion.div
-        className="relative card-3d"
-        style={{ transformStyle: "preserve-3d" }}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ duration: 0.6 }}
-      >
+      <div className="relative">
         {/* Front of Card */}
         <div
           className={`
             glass-strong rounded-2xl p-6 shadow-glass
             border-2 bg-gradient-to-br ${currencyColors[currency]}
             ${statusConfig[status].glow}
-            ${isFlipped ? "hidden" : "block"}
           `}
         >
           {/* Status Badge */}
@@ -190,7 +181,7 @@ const PaymentCard = ({
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 };

@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAccount, useWriteContract, useReadContract } from 'wagmi'
-import { parseEther } from 'viem'
 import { CONTRACTS, TOKENS } from '../contracts/config'
 import PaymentGatewayABI from '../contracts/PaymentGateway.json'
 
 export default function PaymentPage() {
   const { paymentId } = useParams()
-  const { address, isConnected } = useAccount()
+  const { isConnected } = useAccount()
   const [manualPaymentId, setManualPaymentId] = useState('')
   const [timeLeft, setTimeLeft] = useState<number>(0)
 
@@ -166,7 +165,7 @@ export default function PaymentPage() {
           )}
         </div>
 
-        {status === 'Pending' && isValid && (
+        {status === 'Pending' && Boolean(isValid) && (
           <div className="payment-actions">
             {!isConnected ? (
               <p className="warning">🔐 Connect your wallet to pay</p>

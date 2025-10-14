@@ -1,6 +1,3 @@
-import { motion } from "framer-motion";
-import { useState } from "react";
-
 interface AmountInputProps {
   value: string;
   onChange: (value: string) => void;

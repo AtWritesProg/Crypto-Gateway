@@ -56,7 +56,7 @@ const styles = {
 export default function SimpleRequestPage() {
   const { address, isConnected } = useAccount()
   const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState(TOKENS.ETH)
+  const [currency, setCurrency] = useState<`0x${string}`>(TOKENS.ETH as `0x${string}`)
   const [validity, setValidity] = useState('1800')
   const [showRegistration, setShowRegistration] = useState(false)
   const [businessName, setBusinessName] = useState('')
@@ -272,7 +272,7 @@ export default function SimpleRequestPage() {
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
                   Get paid in:
                 </label>
-                <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ ...styles.input, fontWeight: 'bold', fontSize: '1.125rem', cursor: 'pointer' }}>
+                <select value={currency} onChange={(e) => setCurrency(e.target.value as `0x${string}`)} style={{ ...styles.input, fontWeight: 'bold', fontSize: '1.125rem', cursor: 'pointer' }}>
                   <option value={TOKENS.ETH} style={{ background: '#1e1b4b' }}>🟣 ETH</option>
                   <option value={TOKENS.BTC} style={{ background: '#1e1b4b' }}>🟠 BTC</option>
                   <option value={TOKENS.USDC} style={{ background: '#1e1b4b' }}>🔵 USDC</option>

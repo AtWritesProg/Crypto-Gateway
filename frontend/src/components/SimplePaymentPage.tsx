@@ -12,7 +12,7 @@ import PaymentGatewayABI from '../contracts/PaymentGateway.json'
 
 export default function SimplePaymentPage() {
   const { paymentId } = useParams()
-  const { address, isConnected } = useAccount()
+  const { isConnected } = useAccount()
   const [manualPaymentId, setManualPaymentId] = useState('')
   const [timeLeft, setTimeLeft] = useState<number>(0)
 
@@ -253,7 +253,7 @@ export default function SimplePaymentPage() {
             </div>
 
             {/* Payment Actions */}
-            {status === 'Pending' && isValid && (
+            {status === 'Pending' && Boolean(isValid) && (
               <div className="mb-4">
                 {!isConnected ? (
                   <div className="text-center p-6 bg-yellow-400/10 rounded-xl border border-yellow-400/20 mb-4">

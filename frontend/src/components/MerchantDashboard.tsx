@@ -229,7 +229,6 @@ function PaymentCard({ paymentId }: { paymentId: string }) {
     args: [paymentId],
   })
 
-  const [showQR, setShowQR] = useState(false)
   const [copied, setCopied] = useState(false)
 
   if (!payment) return null

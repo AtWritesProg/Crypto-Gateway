@@ -14,7 +14,7 @@ import GradientButton from './GradientButton'
 export default function RequestMoneyPage() {
   const { address, isConnected } = useAccount()
   const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState(TOKENS.ETH)
+  const [currency, setCurrency] = useState<`0x${string}`>(TOKENS.ETH as `0x${string}`)
   const [validity, setValidity] = useState('1800') // 30 minutes
   const [showRegistration, setShowRegistration] = useState(false)
   const [businessName, setBusinessName] = useState('')
@@ -207,7 +207,7 @@ export default function RequestMoneyPage() {
                 <div className="relative">
                   <select
                     value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
+                    onChange={(e) => setCurrency(e.target.value as `0x${string}`)}
                     className="w-full glass-strong rounded-lg px-4 py-3 appearance-none cursor-pointer font-bold text-lg bg-transparent border border-white/10 focus:border-primary transition-all outline-none"
                   >
                     <option value={TOKENS.ETH}>🟣 ETH</option>

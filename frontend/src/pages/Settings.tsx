@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Settings as SettingsIcon, Bell, Shield, Palette, User } from "lucide-react";
+import { Bell, Shield, Palette, User } from "lucide-react";
 import { useAccount } from 'wagmi';
 import AnimatedBackground from "../components/AnimatedBackground";
 import GlassNavbar from "../components/GlassNavbar";

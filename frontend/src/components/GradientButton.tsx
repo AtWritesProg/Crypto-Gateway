@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ReactNode, ComponentProps } from "react";
+import type { ReactNode, ComponentProps } from "react";
 
 interface GradientButtonProps extends Omit<ComponentProps<typeof motion.button>, "children"> {
   children: ReactNode;
