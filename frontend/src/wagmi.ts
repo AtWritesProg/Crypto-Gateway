@@ -3,7 +3,7 @@ import { sepolia } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
   appName: 'WalletWave',
-  projectId: 'YOUR_PROJECT_ID', // Get from https://cloud.walletconnect.com
+  projectId: '3fbb6bba6f1de962d911bb5b5c9dba88', // Public WalletConnect project ID
   chains: [sepolia],
   ssr: false,
 });

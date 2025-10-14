@@ -1,12 +1,12 @@
 import { Routes, Route } from 'react-router-dom'
-import SimpleRequestPage from './components/SimpleRequestPage'
+import RequestMoney from './pages/RequestMoney'
 import SimplePaymentPage from './components/SimplePaymentPage'
 import './App.css'
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<SimpleRequestPage />} />
+      <Route path="/" element={<RequestMoney />} />
       <Route path="/pay" element={<SimplePaymentPage />} />
       <Route path="/pay/:paymentId" element={<SimplePaymentPage />} />
     </Routes>

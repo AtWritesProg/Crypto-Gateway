@@ -1,7 +1,7 @@
-import { motion, HTMLMotionProps } from "framer-motion";
-import { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { ReactNode, ComponentProps } from "react";
 
-interface GradientButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
+interface GradientButtonProps extends Omit<ComponentProps<typeof motion.button>, "children"> {
   children: ReactNode;
   variant?: "primary" | "secondary" | "accent" | "danger";
   size?: "sm" | "md" | "lg" | "xl";

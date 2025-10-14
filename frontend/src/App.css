@@ -577,11 +577,11 @@ All colors MUST be HSL.
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   body {
-    @apply text-foreground;
+    color: hsl(var(--foreground));
     background: linear-gradient(180deg, hsl(var(--background-start)), hsl(var(--background-end)));
     min-height: 100vh;
   }

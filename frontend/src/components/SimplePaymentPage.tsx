@@ -1,48 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAccount, useWriteContract, useReadContract } from 'wagmi'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { motion } from "framer-motion"
+import { Zap, Clock, User } from "lucide-react"
+import toast, { Toaster } from "react-hot-toast"
+import AnimatedBackground from "./AnimatedBackground"
+import GlassNavbar from "./GlassNavbar"
+import GradientButton from "./GradientButton"
 import { CONTRACTS, TOKENS } from '../contracts/config'
 import PaymentGatewayABI from '../contracts/PaymentGateway.json'
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #1e1b4b 0%, #1e3a8a 50%, #000000 100%)',
-    color: 'white'
-  },
-  header: {
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(255,255,255,0.05)',
-    backdropFilter: 'blur(10px)'
-  },
-  gradientText: {
-    background: 'linear-gradient(to right, #c084fc, #22d3ee)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text'
-  },
-  glassCard: {
-    background: 'rgba(255,255,255,0.1)',
-    backdropFilter: 'blur(20px)',
-    borderRadius: '1.5rem',
-    padding: '2rem',
-    border: '1px solid rgba(255,255,255,0.2)',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-  },
-  button: {
-    width: '100%',
-    background: 'linear-gradient(to right, #8b5cf6, #06b6d4)',
-    borderRadius: '0.5rem',
-    padding: '1rem 1.5rem',
-    fontSize: '1.25rem',
-    fontWeight: 'bold',
-    color: 'white',
-    border: 'none',
-    cursor: 'pointer',
-    boxShadow: '0 10px 25px -5px rgba(139, 92, 246, 0.5)'
-  }
-}
 
 export default function SimplePaymentPage() {
   const { paymentId } = useParams()
@@ -86,7 +52,17 @@ export default function SimplePaymentPage() {
   }, [paymentData])
 
   const handlePayment = async () => {
-    if (!isConnected || !paymentData) return
+    if (!isConnected || !paymentData) {
+      toast.error("Please connect your wallet", {
+        icon: "⚠️",
+        style: {
+          background: "hsl(var(--card))",
+          color: "hsl(var(--foreground))",
+          border: "1px solid rgba(255,255,255,0.1)",
+        },
+      });
+      return
+    }
 
     try {
       const isETH = paymentData.token === TOKENS.ETH
@@ -108,11 +84,25 @@ export default function SimplePaymentPage() {
         })
       }
 
-      alert('Payment submitted!')
+      toast.success("Payment submitted!", {
+        icon: "✅",
+        style: {
+          background: "hsl(var(--card))",
+          color: "hsl(var(--foreground))",
+          border: "1px solid rgba(255,255,255,0.1)",
+        },
+      });
       refetchPayment()
     } catch (error) {
       console.error('Payment error:', error)
-      alert('Payment failed')
+      toast.error("Payment failed", {
+        icon: "❌",
+        style: {
+          background: "hsl(var(--card))",
+          color: "hsl(var(--foreground))",
+          border: "1px solid rgba(255,255,255,0.1)",
+        },
+      });
     }
   }
 
@@ -131,79 +121,54 @@ export default function SimplePaymentPage() {
 
   if (!activePaymentId) {
     return (
-      <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.header}>
-          <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ ...styles.gradientText, fontSize: '1.5rem', fontWeight: 'bold' }}>
-              💳 WalletWave
-            </h1>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <a href="/" style={{ color: 'white', textDecoration: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.1)' }}>
-                Request Money
-              </a>
-              <a href="/pay" style={{ color: 'white', textDecoration: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.1)' }}>
-                Pay Someone
-              </a>
-              <ConnectButton />
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen">
+        <Toaster position="top-right" />
+        <AnimatedBackground />
+        <GlassNavbar />
 
-        <div style={{ maxWidth: '42rem', margin: '5rem auto', padding: '2rem' }}>
-          <div style={styles.glassCard}>
-            <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>Pay Someone</h2>
-            <p style={{ color: '#d1d5db', marginBottom: '1.5rem' }}>Enter the payment link or ID you received:</p>
-            <input
-              type="text"
-              placeholder="Paste payment ID here (0x...)"
-              value={manualPaymentId}
-              onChange={(e) => setManualPaymentId(e.target.value)}
-              style={{
-                width: '100%',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '0.5rem',
-                padding: '1rem',
-                color: 'white',
-                fontSize: '1rem',
-                outline: 'none'
-              }}
-            />
-            <p style={{ color: '#9ca3af', marginTop: '1rem', fontSize: '0.875rem' }}>💡 Or click on a payment link shared with you</p>
-          </div>
-        </div>
+        <main className="container mx-auto px-4 pt-32 pb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-2xl mx-auto"
+          >
+            <div className="glass-strong rounded-3xl p-8 border border-white/10 shadow-elevated">
+              <h2 className="text-4xl font-bold gradient-text mb-4">Pay Someone</h2>
+              <p className="text-muted-foreground mb-6">Enter the payment link or ID you received:</p>
+              <input
+                type="text"
+                placeholder="Paste payment ID here (0x...)"
+                value={manualPaymentId}
+                onChange={(e) => setManualPaymentId(e.target.value)}
+                className="w-full bg-card/50 border-2 border-white/10 focus:border-primary rounded-xl px-4 py-3 text-foreground outline-none transition-all"
+              />
+              <p className="text-muted-foreground text-sm mt-4">💡 Or click on a payment link shared with you</p>
+            </div>
+          </motion.div>
+        </main>
       </div>
     )
   }
 
   if (!payment || !paymentData.paymentId) {
     return (
-      <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.header}>
-          <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ ...styles.gradientText, fontSize: '1.5rem', fontWeight: 'bold' }}>
-              💳 WalletWave
-            </h1>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <a href="/" style={{ color: 'white', textDecoration: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.1)' }}>
-                Request Money
-              </a>
-              <a href="/pay" style={{ color: 'white', textDecoration: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.1)' }}>
-                Pay Someone
-              </a>
-              <ConnectButton />
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen">
+        <Toaster position="top-right" />
+        <AnimatedBackground />
+        <GlassNavbar />
 
-        <div style={{ maxWidth: '42rem', margin: '5rem auto', padding: '2rem' }}>
-          <div style={{ ...styles.glassCard, textAlign: 'center' }}>
-            <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem', color: '#ef4444' }}>Payment Not Found</h2>
-            <p style={{ color: '#d1d5db' }}>The payment ID you provided could not be found.</p>
-          </div>
-        </div>
+        <main className="container mx-auto px-4 pt-32 pb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-2xl mx-auto text-center"
+          >
+            <div className="glass-strong rounded-3xl p-8 border border-white/10 shadow-elevated">
+              <h2 className="text-4xl font-bold text-red-500 mb-4">Payment Not Found</h2>
+              <p className="text-muted-foreground">The payment ID you provided could not be found.</p>
+            </div>
+          </motion.div>
+        </main>
       </div>
     )
   }
@@ -215,119 +180,113 @@ export default function SimplePaymentPage() {
   const usdAmount = (Number(paymentData.amountUSD) / 1e8).toFixed(2)
 
   const statusColors = {
-    Pending: '#eab308',
-    Completed: '#22c55e',
-    Failed: '#ef4444',
-    Expired: '#6b7280',
-    Refunded: '#3b82f6'
+    Pending: 'text-yellow-400',
+    Completed: 'text-green-400',
+    Failed: 'text-red-400',
+    Expired: 'text-gray-400',
+    Refunded: 'text-blue-400'
   }
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ ...styles.gradientText, fontSize: '1.5rem', fontWeight: 'bold' }}>
-            💳 WalletWave
-          </h1>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <a href="/" style={{ color: 'white', textDecoration: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.1)' }}>
-              Request Money
-            </a>
-            <a href="/pay" style={{ color: 'white', textDecoration: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.1)' }}>
-              Pay Someone
-            </a>
-            <ConnectButton />
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen">
+      <Toaster position="top-right" />
+      <AnimatedBackground />
+      <GlassNavbar />
 
-      <main style={{ maxWidth: '42rem', margin: '3rem auto', padding: '2rem' }}>
-        <div style={styles.glassCard}>
-          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-              <span style={styles.gradientText}>Payment Request</span>
-            </h2>
-            <div style={{
-              display: 'inline-block',
-              padding: '0.5rem 1rem',
-              borderRadius: '9999px',
-              fontSize: '0.875rem',
-              fontWeight: 'bold',
-              background: statusColors[status as keyof typeof statusColors],
-              marginBottom: '2rem'
-            }}>
-              {status}
-            </div>
-          </div>
-
-          {/* Amount Display */}
-          <div style={{ textAlign: 'center', marginBottom: '2rem', padding: '2rem', background: 'rgba(255,255,255,0.05)', borderRadius: '1rem' }}>
-            <p style={{ color: '#9ca3af', marginBottom: '0.5rem' }}>You're being asked to pay</p>
-            <h1 style={{ fontSize: '4rem', fontWeight: 'bold', marginBottom: '0.5rem', ...styles.gradientText }}>${usdAmount}</h1>
-            <p style={{ fontSize: '1.25rem', color: '#9ca3af' }}>≈ {tokenAmount} {tokenSymbol}</p>
-          </div>
-
-          {/* Payment Info */}
-          <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
-            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem' }}>
-              <p style={{ fontSize: '0.875rem', color: '#9ca3af', marginBottom: '0.25rem' }}>Receiving</p>
-              <p style={{ fontFamily: 'monospace', fontSize: '1.125rem' }}>
-                {paymentData.merchant.slice(0, 6)}...{paymentData.merchant.slice(-4)}
-              </p>
+      <main className="container mx-auto px-4 pt-32 pb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-2xl mx-auto"
+        >
+          <div className="glass-strong rounded-3xl p-8 border border-white/10 shadow-elevated">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h2 className="text-4xl font-bold gradient-text mb-4">Payment Request</h2>
+              <div className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${statusColors[status as keyof typeof statusColors]} bg-card/50`}>
+                {status}
+              </div>
             </div>
 
-            {paymentData.customer !== '0x0000000000000000000000000000000000000000' && (
-              <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem' }}>
-                <p style={{ fontSize: '0.875rem', color: '#9ca3af', marginBottom: '0.25rem' }}>Paid by</p>
-                <p style={{ fontFamily: 'monospace', fontSize: '1.125rem' }}>
-                  {paymentData.customer.slice(0, 6)}...{paymentData.customer.slice(-4)}
-                </p>
-              </div>
-            )}
+            {/* Amount Display */}
+            <div className="text-center mb-8 p-8 bg-card/30 rounded-2xl border border-white/10">
+              <p className="text-muted-foreground mb-2">You're being asked to pay</p>
+              <h1 className="text-6xl font-bold gradient-text mb-2">${usdAmount}</h1>
+              <p className="text-xl text-muted-foreground">≈ {tokenAmount} {tokenSymbol}</p>
+            </div>
 
-            {status === 'Pending' && timeLeft > 0 && (
-              <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem' }}>
-                <p style={{ fontSize: '0.875rem', color: '#9ca3af', marginBottom: '0.25rem' }}>Link expires in</p>
-                <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#eab308' }}>{formatTime(timeLeft)}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Payment Actions */}
-          {status === 'Pending' && isValid && (
-            <div style={{ marginBottom: '1rem' }}>
-              {!isConnected ? (
-                <div style={{ textAlign: 'center', padding: '2rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '0.5rem', marginBottom: '1rem' }}>
-                  <p style={{ color: '#eab308', marginBottom: '1rem' }}>🔐 Connect your wallet to pay</p>
-                  <ConnectButton />
+            {/* Payment Info */}
+            <div className="space-y-4 mb-8">
+              <div className="glass rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Receiving</p>
+                    <p className="font-mono text-lg">{paymentData.merchant.slice(0, 6)}...{paymentData.merchant.slice(-4)}</p>
+                  </div>
                 </div>
-              ) : (
-                <button
-                  onClick={handlePayment}
-                  disabled={isProcessing || isProcessingToken}
-                  style={{ ...styles.button, opacity: (isProcessing || isProcessingToken) ? 0.5 : 1, cursor: (isProcessing || isProcessingToken) ? 'not-allowed' : 'pointer' }}
-                >
-                  {isProcessing || isProcessingToken ? 'Processing Payment...' : `💸 Pay ${tokenAmount} ${tokenSymbol}`}
-                </button>
+              </div>
+
+              {paymentData.customer !== '0x0000000000000000000000000000000000000000' && (
+                <div className="glass rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <User className="w-5 h-5 text-cyan" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Paid by</p>
+                      <p className="font-mono text-lg">{paymentData.customer.slice(0, 6)}...{paymentData.customer.slice(-4)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {status === 'Pending' && timeLeft > 0 && (
+                <div className="glass rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-yellow-400" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Link expires in</p>
+                      <p className="text-2xl font-bold text-yellow-400">{formatTime(timeLeft)}</p>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
-          )}
 
-          {status === 'Completed' && (
-            <div style={{ textAlign: 'center', padding: '2rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '0.5rem' }}>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#22c55e', marginBottom: '0.5rem' }}>✅ Payment Completed</h3>
-              <p style={{ color: '#9ca3af' }}>This payment has been successfully processed.</p>
-            </div>
-          )}
+            {/* Payment Actions */}
+            {status === 'Pending' && isValid && (
+              <div className="mb-4">
+                {!isConnected ? (
+                  <div className="text-center p-6 bg-yellow-400/10 rounded-xl border border-yellow-400/20 mb-4">
+                    <p className="text-yellow-400 mb-4">🔐 Connect your wallet to pay</p>
+                  </div>
+                ) : (
+                  <GradientButton
+                    onClick={handlePayment}
+                    disabled={isProcessing || isProcessingToken}
+                    size="xl"
+                    icon={<Zap className="w-6 h-6" />}
+                  >
+                    {isProcessing || isProcessingToken ? 'Processing Payment...' : `Pay ${tokenAmount} ${tokenSymbol}`}
+                  </GradientButton>
+                )}
+              </div>
+            )}
 
-          {status === 'Expired' && (
-            <div style={{ textAlign: 'center', padding: '2rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '0.5rem' }}>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444', marginBottom: '0.5rem' }}>⏰ Link Expired</h3>
-              <p style={{ color: '#9ca3af' }}>This payment link has expired. Please ask for a new one.</p>
-            </div>
-          )}
-        </div>
+            {status === 'Completed' && (
+              <div className="text-center p-6 bg-green-400/10 rounded-xl border border-green-400/20">
+                <h3 className="text-2xl font-bold text-green-400 mb-2">✅ Payment Completed</h3>
+                <p className="text-muted-foreground">This payment has been successfully processed.</p>
+              </div>
+            )}
+
+            {status === 'Expired' && (
+              <div className="text-center p-6 bg-red-400/10 rounded-xl border border-red-400/20">
+                <h3 className="text-2xl font-bold text-red-400 mb-2">⏰ Link Expired</h3>
+                <p className="text-muted-foreground">This payment link has expired. Please ask for a new one.</p>
+              </div>
+            )}
+          </div>
+        </motion.div>
       </main>
     </div>
   )
