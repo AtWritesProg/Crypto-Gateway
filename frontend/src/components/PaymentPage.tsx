@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { useAccount, useWriteContract, useReadContract } from 'wagmi'
+import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
 import { CONTRACTS, TOKENS } from '../contracts/config'
 import PaymentGatewayABI from '../contracts/PaymentGateway.json'
 
@@ -26,8 +26,16 @@ export default function PaymentPage() {
     args: [activePaymentId],
   })
 
-  const { writeContract: processPayment, isPending: isProcessing } = useWriteContract()
-  const { writeContract: processTokenPayment, isPending: isProcessingToken } = useWriteContract()
+  const { writeContract: processPayment, isPending: isProcessing, data: processPaymentHash } = useWriteContract()
+  const { writeContract: processTokenPayment, isPending: isProcessingToken, data: processTokenPaymentHash } = useWriteContract()
+
+  const { isSuccess: isProcessPaymentSuccess } = useWaitForTransactionReceipt({
+    hash: processPaymentHash,
+  })
+
+  const { isSuccess: isProcessTokenPaymentSuccess } = useWaitForTransactionReceipt({
+    hash: processTokenPaymentHash,
+  })
 
   const paymentData = payment as any
 
@@ -44,6 +52,21 @@ export default function PaymentPage() {
 
     return () => clearInterval(interval)
   }, [paymentData])
+
+  // Check if payment has actually expired
+  const currentTime = Math.floor(Date.now() / 1000)
+  const hasExpired = paymentData && Number(paymentData.expiresAt) < currentTime
+
+  // Refetch payment data after successful payment processing
+  useEffect(() => {
+    if (isProcessPaymentSuccess || isProcessTokenPaymentSuccess) {
+      // Small delay to ensure blockchain state has propagated
+      setTimeout(() => {
+        refetchPayment()
+        alert('Payment submitted!')
+      }, 1000)
+    }
+  }, [isProcessPaymentSuccess, isProcessTokenPaymentSuccess, refetchPayment])
 
   const handlePayment = async () => {
     if (!isConnected || !paymentData) return
@@ -67,9 +90,7 @@ export default function PaymentPage() {
           args: [activePaymentId, paymentData.amount],
         })
       }
-
-      alert('Payment submitted!')
-      refetchPayment()
+      // Success alert and refetch will happen in useEffect after transaction confirmation
     } catch (error) {
       console.error('Payment error:', error)
       alert('Payment failed')
@@ -122,7 +143,13 @@ export default function PaymentPage() {
   }
 
   const statusLabels = ['Pending', 'Completed', 'Failed', 'Expired', 'Refunded']
-  const status = statusLabels[paymentData.status]
+
+  // Determine actual status - check expiration on client side
+  let status = statusLabels[paymentData.status]
+  if (hasExpired && status === 'Pending') {
+    status = 'Expired'
+  }
+
   const tokenSymbol = getTokenSymbol(paymentData.token)
   const tokenAmount = (Number(paymentData.amount) / 1e18).toFixed(6)
   const usdAmount = (Number(paymentData.amountUSD) / 1e8).toFixed(2)
@@ -165,7 +192,7 @@ export default function PaymentPage() {
           )}
         </div>
 
-        {status === 'Pending' && Boolean(isValid) && (
+        {status === 'Pending' && !hasExpired && (
           <div className="payment-actions">
             {!isConnected ? (
               <p className="warning">🔐 Connect your wallet to pay</p>

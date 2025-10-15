@@ -21,10 +21,14 @@ export default function RequestMoneyPage() {
   const [email, setEmail] = useState('')
 
   const { writeContract: registerMerchant, isPending: isRegistering, data: registerHash } = useWriteContract()
-  const { writeContract: createPayment, isPending: isCreating } = useWriteContract()
+  const { writeContract: createPayment, isPending: isCreating, data: createPaymentHash } = useWriteContract()
 
   const { isSuccess: isRegisterSuccess } = useWaitForTransactionReceipt({
     hash: registerHash,
+  })
+
+  const { isSuccess: isCreatePaymentSuccess } = useWaitForTransactionReceipt({
+    hash: createPaymentHash,
   })
 
   const { data: isMerchantActive, refetch: refetchMerchantStatus } = useReadContract({
@@ -48,6 +52,16 @@ export default function RequestMoneyPage() {
     }
   }, [isRegisterSuccess, refetchMerchantStatus])
 
+  useEffect(() => {
+    if (isCreatePaymentSuccess) {
+      // Small delay to ensure blockchain state has propagated
+      setTimeout(() => {
+        refetchPayments()
+        alert('Payment link generated! 🎉')
+      }, 1000)
+    }
+  }, [isCreatePaymentSuccess, refetchPayments])
+
   const handleGenerateLink = async () => {
     if (!isConnected) return
 
@@ -69,9 +83,8 @@ export default function RequestMoneyPage() {
         functionName: 'createPayment',
         args: [currency, usdAmount, Number(validity)],
       })
-      alert('Payment link generated! 🎉')
-      refetchPayments()
       setAmount('')
+      // Success alert and refetch will happen in useEffect after transaction confirmation
     } catch (error) {
       console.error('Error creating payment:', error)
       alert('Failed to create payment')

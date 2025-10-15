@@ -63,10 +63,14 @@ export default function SimpleRequestPage() {
   const [email, setEmail] = useState('')
 
   const { writeContract: registerMerchant, isPending: isRegistering, data: registerHash } = useWriteContract()
-  const { writeContract: createPayment, isPending: isCreating } = useWriteContract()
+  const { writeContract: createPayment, isPending: isCreating, data: createPaymentHash } = useWriteContract()
 
   const { isSuccess: isRegisterSuccess } = useWaitForTransactionReceipt({
     hash: registerHash,
+  })
+
+  const { isSuccess: isCreatePaymentSuccess } = useWaitForTransactionReceipt({
+    hash: createPaymentHash,
   })
 
   const { data: isMerchantActive, refetch: refetchMerchantStatus } = useReadContract({
@@ -81,6 +85,9 @@ export default function SimpleRequestPage() {
     abi: PaymentGatewayABI,
     functionName: 'getMerchantPayments',
     args: [address],
+    query: {
+      enabled: !!address,
+    },
   })
 
   useEffect(() => {
@@ -89,6 +96,16 @@ export default function SimpleRequestPage() {
       setShowRegistration(false)
     }
   }, [isRegisterSuccess, refetchMerchantStatus])
+
+  useEffect(() => {
+    if (isCreatePaymentSuccess) {
+      // Small delay to ensure blockchain state has propagated
+      setTimeout(() => {
+        refetchPayments()
+        alert('Payment link generated! 🎉')
+      }, 1000)
+    }
+  }, [isCreatePaymentSuccess, refetchPayments])
 
   const handleGenerateLink = async () => {
     if (!isConnected) {
@@ -114,9 +131,8 @@ export default function SimpleRequestPage() {
         functionName: 'createPayment',
         args: [currency, usdAmount, Number(validity)],
       })
-      alert('Payment link generated! 🎉')
-      refetchPayments()
       setAmount('')
+      // Success alert and refetch will happen in useEffect after transaction confirmation
     } catch (error) {
       console.error('Error creating payment:', error)
       alert('Failed to create payment')
@@ -300,33 +316,96 @@ export default function SimpleRequestPage() {
         </div>
 
         {/* Payment Requests */}
-        <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
-          <h3 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '2rem', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            <span style={{ background: 'linear-gradient(to right, #f472b6, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Your Requests
-            </span>
-          </h3>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-            {merchantPayments && (merchantPayments as string[]).length > 0 ? (
-              (merchantPayments as string[]).map((paymentId: string) => (
-                <PaymentRequestCard key={paymentId} paymentId={paymentId} />
-              ))
-            ) : (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#9ca3af', padding: '3rem' }}>
-                <p style={{ fontSize: '1.25rem' }}>No payment requests yet.</p>
-                <p>Create your first one above!</p>
-              </div>
-            )}
-          </div>
-        </div>
+        <PaymentsList merchantPayments={merchantPayments as string[] | undefined} />
       </main>
     </div>
   )
 }
 
-function PaymentRequestCard({ paymentId }: { paymentId: string }) {
+function PaymentsList({ merchantPayments }: { merchantPayments: string[] | undefined }) {
+  const [payments, setPayments] = useState<{pending: any[], completed: any[], expired: any[]}>({
+    pending: [],
+    completed: [],
+    expired: []
+  })
+
+  useEffect(() => {
+    if (!merchantPayments) return
+
+    const categorized = {
+      pending: [] as any[],
+      completed: [] as any[],
+      expired: [] as any[]
+    }
+
+    merchantPayments.forEach((paymentId) => {
+      categorized.pending.push(paymentId)
+    })
+
+    setPayments(categorized)
+  }, [merchantPayments])
+
+  if (!merchantPayments || merchantPayments.length === 0) {
+    return (
+      <div style={{ maxWidth: '80rem', margin: '0 auto', textAlign: 'center', color: '#9ca3af', padding: '3rem' }}>
+        <p style={{ fontSize: '1.25rem' }}>No payment requests yet.</p>
+        <p>Create your first one above!</p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
+      {/* Pending - Top */}
+      <div style={{ marginBottom: '3rem' }}>
+        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <span style={{ background: 'linear-gradient(to right, #eab308, #f59e0b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            ⏳ Pending
+          </span>
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          {merchantPayments.map((paymentId: string) => (
+            <PaymentRequestCard key={paymentId} paymentId={paymentId} filter="pending" />
+          ))}
+        </div>
+      </div>
+
+      {/* Paid - Middle */}
+      <div style={{ marginBottom: '3rem' }}>
+        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <span style={{ background: 'linear-gradient(to right, #22c55e, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            ✅ Paid
+          </span>
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          {merchantPayments.map((paymentId: string) => (
+            <PaymentRequestCard key={paymentId} paymentId={paymentId} filter="completed" />
+          ))}
+        </div>
+      </div>
+
+      {/* Expired - Bottom */}
+      <div>
+        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <span style={{ background: 'linear-gradient(to right, #6b7280, #9ca3af)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            ⏰ Expired
+          </span>
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          {merchantPayments.map((paymentId: string) => (
+            <PaymentRequestCard key={paymentId} paymentId={paymentId} filter="expired" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PaymentRequestCard({ paymentId, filter }: { paymentId: string, filter?: string }) {
   const [copied, setCopied] = useState(false)
+  const [copiedId, setCopiedId] = useState(false)
+  const [isDeleted, setIsDeleted] = useState(false)
+  const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000))
 
   const { data: payment } = useReadContract({
     address: CONTRACTS.PaymentGateway as `0x${string}`,
@@ -335,9 +414,35 @@ function PaymentRequestCard({ paymentId }: { paymentId: string }) {
     args: [paymentId],
   })
 
+  // Update current time every second to check expiration
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Math.floor(Date.now() / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   if (!payment) return null
 
   const paymentData = payment as any
+  const statusLabels = ['Pending', 'Completed', 'Failed', 'Expired', 'Refunded']
+
+  // Check if payment has expired (client-side check)
+  const isExpired = paymentData.status === 0 && Number(paymentData.expiresAt) < currentTime
+
+  // Determine actual status
+  let status = statusLabels[paymentData.status]
+  if (isExpired) {
+    status = 'Expired'
+  }
+
+  // Filter logic
+  if (filter) {
+    if (filter === 'pending' && status !== 'Pending') return null
+    if (filter === 'completed' && status !== 'Completed') return null
+    if (filter === 'expired' && status !== 'Expired') return null
+  }
+
   const paymentUrl = `${window.location.origin}/pay/${paymentId}`
 
   const getTokenSymbol = (tokenAddress: string) => {
@@ -349,8 +454,6 @@ function PaymentRequestCard({ paymentId }: { paymentId: string }) {
 
   const currency = getTokenSymbol(paymentData.token)
   const amount = (Number(paymentData.amountUSD) / 1e8).toFixed(2)
-  const statusLabels = ['Pending', 'Completed', 'Failed', 'Expired', 'Refunded']
-  const status = statusLabels[paymentData.status]
 
   const statusColors = {
     Pending: '#eab308',
@@ -366,6 +469,20 @@ function PaymentRequestCard({ paymentId }: { paymentId: string }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(paymentId)
+    setCopiedId(true)
+    setTimeout(() => setCopiedId(false), 2000)
+  }
+
+  const handleDelete = () => {
+    if (confirm('Are you sure you want to hide this payment request?')) {
+      setIsDeleted(true)
+    }
+  }
+
+  if (isDeleted) return null
+
   return (
     <div style={{
       background: 'rgba(255,255,255,0.1)',
@@ -374,8 +491,40 @@ function PaymentRequestCard({ paymentId }: { paymentId: string }) {
       padding: '1.5rem',
       border: '1px solid rgba(255,255,255,0.2)',
       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
-      color: 'white'
+      color: 'white',
+      position: 'relative'
     }}>
+      {/* Close button */}
+      <button
+        onClick={handleDelete}
+        style={{
+          position: 'absolute',
+          top: '0.5rem',
+          right: '0.5rem',
+          background: 'rgba(239, 68, 68, 0.2)',
+          border: 'none',
+          borderRadius: '0.375rem',
+          width: '2rem',
+          height: '2rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          color: '#ef4444',
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.4)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'
+        }}
+      >
+        ×
+      </button>
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
         <span style={{
           padding: '0.25rem 0.75rem',
@@ -396,6 +545,31 @@ function PaymentRequestCard({ paymentId }: { paymentId: string }) {
         <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>{currency} Payment</div>
       </div>
 
+      {/* Payment ID Section */}
+      <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem' }}>
+        <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.25rem' }}>Payment ID</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {paymentId.slice(0, 12)}...{paymentId.slice(-8)}
+          </span>
+          <button
+            onClick={handleCopyId}
+            style={{
+              background: 'rgba(255,255,255,0.1)',
+              border: 'none',
+              borderRadius: '0.375rem',
+              padding: '0.375rem 0.75rem',
+              fontSize: '0.75rem',
+              color: 'white',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {copiedId ? '✓ Copied' : '📋 Copy'}
+          </button>
+        </div>
+      </div>
+
       {paymentData.customer !== '0x0000000000000000000000000000000000000000' && (
         <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}>
           <span style={{ color: '#9ca3af' }}>From: </span>
@@ -403,22 +577,32 @@ function PaymentRequestCard({ paymentId }: { paymentId: string }) {
         </div>
       )}
 
+      {/* Action Buttons */}
       {status === 'Pending' && (
         <button
           onClick={handleCopy}
           style={{
             width: '100%',
-            background: 'rgba(255,255,255,0.1)',
+            background: 'linear-gradient(to right, #8b5cf6, #06b6d4)',
             borderRadius: '0.5rem',
-            padding: '0.5rem 1rem',
+            padding: '0.75rem 1rem',
             fontSize: '0.875rem',
-            fontWeight: '500',
+            fontWeight: '600',
             color: 'white',
             border: 'none',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px -2px rgba(139, 92, 246, 0.5)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-1px)'
+            e.currentTarget.style.boxShadow = '0 6px 16px -2px rgba(139, 92, 246, 0.6)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 4px 12px -2px rgba(139, 92, 246, 0.5)'
           }}
         >
-          {copied ? '✓ Copied!' : '📋 Copy Link'}
+          {copied ? '✓ Link Copied!' : '📋 Copy Payment Link'}
         </button>
       )}
     </div>

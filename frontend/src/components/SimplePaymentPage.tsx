@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { useAccount, useWriteContract, useReadContract } from 'wagmi'
+import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
 import { motion } from "framer-motion"
 import { Zap, Clock, User } from "lucide-react"
 import toast, { Toaster } from "react-hot-toast"
@@ -32,8 +32,16 @@ export default function SimplePaymentPage() {
     args: [activePaymentId],
   })
 
-  const { writeContract: processPayment, isPending: isProcessing } = useWriteContract()
-  const { writeContract: processTokenPayment, isPending: isProcessingToken } = useWriteContract()
+  const { writeContract: processPayment, isPending: isProcessing, data: processPaymentHash } = useWriteContract()
+  const { writeContract: processTokenPayment, isPending: isProcessingToken, data: processTokenPaymentHash } = useWriteContract()
+
+  const { isSuccess: isProcessPaymentSuccess } = useWaitForTransactionReceipt({
+    hash: processPaymentHash,
+  })
+
+  const { isSuccess: isProcessTokenPaymentSuccess } = useWaitForTransactionReceipt({
+    hash: processTokenPaymentHash,
+  })
 
   const paymentData = payment as any
 
@@ -50,6 +58,28 @@ export default function SimplePaymentPage() {
 
     return () => clearInterval(interval)
   }, [paymentData])
+
+  // Check if payment has actually expired
+  const currentTime = Math.floor(Date.now() / 1000)
+  const hasExpired = paymentData && Number(paymentData.expiresAt) < currentTime
+
+  // Refetch payment data after successful payment processing
+  useEffect(() => {
+    if (isProcessPaymentSuccess || isProcessTokenPaymentSuccess) {
+      // Small delay to ensure blockchain state has propagated
+      setTimeout(() => {
+        refetchPayment()
+        toast.success("Payment submitted!", {
+          icon: "✅",
+          style: {
+            background: "hsl(var(--card))",
+            color: "hsl(var(--foreground))",
+            border: "1px solid rgba(255,255,255,0.1)",
+          },
+        })
+      }, 1000)
+    }
+  }, [isProcessPaymentSuccess, isProcessTokenPaymentSuccess, refetchPayment])
 
   const handlePayment = async () => {
     if (!isConnected || !paymentData) {
@@ -83,16 +113,7 @@ export default function SimplePaymentPage() {
           args: [activePaymentId, paymentData.amount],
         })
       }
-
-      toast.success("Payment submitted!", {
-        icon: "✅",
-        style: {
-          background: "hsl(var(--card))",
-          color: "hsl(var(--foreground))",
-          border: "1px solid rgba(255,255,255,0.1)",
-        },
-      });
-      refetchPayment()
+      // Success toast and refetch will happen in useEffect after transaction confirmation
     } catch (error) {
       console.error('Payment error:', error)
       toast.error("Payment failed", {
@@ -174,7 +195,13 @@ export default function SimplePaymentPage() {
   }
 
   const statusLabels = ['Pending', 'Completed', 'Failed', 'Expired', 'Refunded']
-  const status = statusLabels[paymentData.status]
+
+  // Determine actual status - check expiration on client side
+  let status = statusLabels[paymentData.status]
+  if (hasExpired && status === 'Pending') {
+    status = 'Expired'
+  }
+
   const tokenSymbol = getTokenSymbol(paymentData.token)
   const tokenAmount = (Number(paymentData.amount) / 1e18).toFixed(6)
   const usdAmount = (Number(paymentData.amountUSD) / 1e8).toFixed(2)
@@ -253,7 +280,7 @@ export default function SimplePaymentPage() {
             </div>
 
             {/* Payment Actions */}
-            {status === 'Pending' && Boolean(isValid) && (
+            {status === 'Pending' && !hasExpired && (
               <div className="mb-4">
                 {!isConnected ? (
                   <div className="text-center p-6 bg-yellow-400/10 rounded-xl border border-yellow-400/20 mb-4">

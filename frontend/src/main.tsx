@@ -10,7 +10,15 @@ import './styles.css'
 import '@rainbow-me/rainbowkit/styles.css'
 import App from './App.tsx'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 0, // Data is considered stale immediately
+      gcTime: 0, // Don't cache old data
+    },
+  },
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

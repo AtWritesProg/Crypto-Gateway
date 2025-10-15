@@ -14,11 +14,16 @@ export default function MerchantDashboard() {
   const [showRegistration, setShowRegistration] = useState(false)
 
   const { writeContract: registerMerchant, isPending: isRegistering, data: registerHash } = useWriteContract()
-  const { writeContract: createPayment, isPending: isCreating } = useWriteContract()
+  const { writeContract: createPayment, isPending: isCreating, data: createPaymentHash } = useWriteContract()
 
   // Wait for registration transaction
   const { isSuccess: isRegisterSuccess } = useWaitForTransactionReceipt({
     hash: registerHash,
+  })
+
+  // Wait for create payment transaction
+  const { isSuccess: isCreatePaymentSuccess } = useWaitForTransactionReceipt({
+    hash: createPaymentHash,
   })
 
   // Check if merchant is registered
@@ -36,6 +41,17 @@ export default function MerchantDashboard() {
       setShowRegistration(false)
     }
   }, [isRegisterSuccess, refetchMerchantStatus])
+
+  // Auto-refetch payments after successful payment creation
+  useEffect(() => {
+    if (isCreatePaymentSuccess) {
+      // Small delay to ensure blockchain state has propagated
+      setTimeout(() => {
+        refetchPayments()
+        alert('Payment link created! Check your requests below.')
+      }, 1000)
+    }
+  }, [isCreatePaymentSuccess, refetchPayments])
 
   // Get merchant payments
   const { data: merchantPayments, refetch: refetchPayments } = useReadContract({
@@ -82,10 +98,9 @@ export default function MerchantDashboard() {
         functionName: 'createPayment',
         args: [selectedToken, usdAmount, Number(duration)],
       })
-      alert('Payment link created! Check your requests below.')
-      refetchPayments()
       // Clear form
       setAmountUSD('')
+      // Success alert and refetch will happen in useEffect after transaction confirmation
     } catch (error) {
       console.error('Create payment error:', error)
       alert('Payment creation failed')
@@ -222,6 +237,9 @@ export default function MerchantDashboard() {
 }
 
 function PaymentCard({ paymentId }: { paymentId: string }) {
+  const [copied, setCopied] = useState(false)
+  const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000))
+
   const { data: payment } = useReadContract({
     address: CONTRACTS.PaymentGateway as `0x${string}`,
     abi: PaymentGatewayABI,
@@ -229,7 +247,13 @@ function PaymentCard({ paymentId }: { paymentId: string }) {
     args: [paymentId],
   })
 
-  const [copied, setCopied] = useState(false)
+  // Update current time every second to check expiration
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Math.floor(Date.now() / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   if (!payment) return null
 
@@ -237,7 +261,15 @@ function PaymentCard({ paymentId }: { paymentId: string }) {
   const paymentUrl = `${window.location.origin}/pay/${paymentId}`
 
   const statusLabels = ['Pending', 'Completed', 'Failed', 'Expired', 'Refunded']
-  const status = statusLabels[paymentData.status]
+
+  // Check if payment has expired (client-side check)
+  const isExpired = paymentData.status === 0 && Number(paymentData.expiresAt) < currentTime
+
+  // Determine actual status
+  let status = statusLabels[paymentData.status]
+  if (isExpired) {
+    status = 'Expired'
+  }
 
   const getTokenSymbol = (tokenAddress: string) => {
     if (tokenAddress === TOKENS.ETH) return 'ETH'
