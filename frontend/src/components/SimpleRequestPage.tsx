@@ -323,27 +323,7 @@ export default function SimpleRequestPage() {
 }
 
 function PaymentsList({ merchantPayments }: { merchantPayments: string[] | undefined }) {
-  const [payments, setPayments] = useState<{pending: any[], completed: any[], expired: any[]}>({
-    pending: [],
-    completed: [],
-    expired: []
-  })
-
-  useEffect(() => {
-    if (!merchantPayments) return
-
-    const categorized = {
-      pending: [] as any[],
-      completed: [] as any[],
-      expired: [] as any[]
-    }
-
-    merchantPayments.forEach((paymentId) => {
-      categorized.pending.push(paymentId)
-    })
-
-    setPayments(categorized)
-  }, [merchantPayments])
+  // Removed unused payments state - filtering handled by PaymentRequestCard component
 
   if (!merchantPayments || merchantPayments.length === 0) {
     return (

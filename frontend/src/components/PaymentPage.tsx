@@ -19,12 +19,7 @@ export default function PaymentPage() {
     args: [activePaymentId],
   })
 
-  const { data: isValid } = useReadContract({
-    address: CONTRACTS.PaymentGateway as `0x${string}`,
-    abi: PaymentGatewayABI,
-    functionName: 'isPaymentValid',
-    args: [activePaymentId],
-  })
+  // Removed unused isValid check - we determine validity client-side using expiration time
 
   const { writeContract: processPayment, isPending: isProcessing, data: processPaymentHash } = useWriteContract()
   const { writeContract: processTokenPayment, isPending: isProcessingToken, data: processTokenPaymentHash } = useWriteContract()

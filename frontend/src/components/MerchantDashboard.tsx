@@ -42,6 +42,14 @@ export default function MerchantDashboard() {
     }
   }, [isRegisterSuccess, refetchMerchantStatus])
 
+  // Get merchant payments
+  const { data: merchantPayments, refetch: refetchPayments } = useReadContract({
+    address: CONTRACTS.PaymentGateway as `0x${string}`,
+    abi: PaymentGatewayABI,
+    functionName: 'getMerchantPayments',
+    args: [address],
+  })
+
   // Auto-refetch payments after successful payment creation
   useEffect(() => {
     if (isCreatePaymentSuccess) {
@@ -52,14 +60,6 @@ export default function MerchantDashboard() {
       }, 1000)
     }
   }, [isCreatePaymentSuccess, refetchPayments])
-
-  // Get merchant payments
-  const { data: merchantPayments, refetch: refetchPayments } = useReadContract({
-    address: CONTRACTS.PaymentGateway as `0x${string}`,
-    abi: PaymentGatewayABI,
-    functionName: 'getMerchantPayments',
-    args: [address],
-  })
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
