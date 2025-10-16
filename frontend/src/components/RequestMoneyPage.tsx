@@ -50,7 +50,7 @@ export default function RequestMoneyPage() {
   const { data: paymentsData } = useReadContracts({
     contracts: paymentIds.map((paymentId) => ({
       address: CONTRACTS.PaymentGateway as `0x${string}`,
-      abi: PaymentGatewayABI,
+      abi: PaymentGatewayABI as any,
       functionName: 'getPayment',
       args: [paymentId],
     })),
