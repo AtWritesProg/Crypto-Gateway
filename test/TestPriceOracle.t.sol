@@ -515,13 +515,13 @@ contract TestPriceOracle is Test {
         oracle.getTokenInfo(ETH_ADDRESS);
     }
 
-    function testIsTokenSupportedForNonexistentToken() public {
+    function testIsTokenSupportedForNonexistentToken() public view {
         assertFalse(oracle.isTokenSupported(ETH_ADDRESS));
         assertFalse(oracle.isTokenSupported(address(mockUSDC)));
         assertFalse(oracle.isTokenSupported(address(0)));
     }
 
-    function testGetSupportedTokensEmptyArray() public {
+    function testGetSupportedTokensEmptyArray() public view {
         address[] memory supportedTokens = oracle.getSupportedTokens();
         assertEq(supportedTokens.length, 0);
     }
@@ -969,7 +969,7 @@ contract TestPriceOracle is Test {
     function _verifyTokenPrices(
         address[] memory tokens,
         uint256[] memory expectedPrices
-    ) internal {
+    ) internal view {
         require(
             tokens.length == expectedPrices.length,
             "Array length mismatch"
