@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useState, useEffect, useMemo } from 'react'
+import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi'
 import { motion } from 'framer-motion'
 import { Zap, ChevronDown } from 'lucide-react'
 import { CONTRACTS, TOKENS } from '../contracts/config'
@@ -45,6 +45,56 @@ export default function RequestMoneyPage() {
     args: [address],
   })
 
+  // Fetch all payment details to sort them
+  const paymentIds = (merchantPayments as string[]) || []
+  const { data: paymentsData } = useReadContracts({
+    contracts: paymentIds.map((paymentId) => ({
+      address: CONTRACTS.PaymentGateway as `0x${string}`,
+      abi: PaymentGatewayABI,
+      functionName: 'getPayment',
+      args: [paymentId],
+    })),
+    query: {
+      refetchInterval: 5000, // Refetch every 5 seconds to keep status updated
+    }
+  })
+
+  // Sort payments: pending first, then expired, then paid/completed
+  const sortedPaymentIds = useMemo(() => {
+    if (!paymentIds.length || !paymentsData) return paymentIds
+
+    const paymentWithStatus = paymentIds.map((id, index) => {
+      const paymentData = paymentsData[index]?.result as any
+      const status = paymentData?.status ?? 0
+      const expiresAt = paymentData?.expiresAt ? Number(paymentData.expiresAt) : 0
+      const currentTime = Math.floor(Date.now() / 1000)
+      const hasExpired = expiresAt > 0 && expiresAt < currentTime
+
+      // Status priority: 0=pending, 1=completed, 2=failed, 3=expired, 4=refunded
+      // If status is pending but expired, treat as expired
+      let sortPriority = status
+      if (status === 0 && hasExpired) {
+        sortPriority = 3 // expired
+      }
+
+      return { id, status: sortPriority, timestamp: expiresAt }
+    })
+
+    // Sort: pending (0) first, then failed (2), expired (3), refunded (4), completed (1) last
+    const priorityOrder = [0, 2, 3, 4, 1]
+    return paymentWithStatus
+      .sort((a, b) => {
+        const aPriority = priorityOrder.indexOf(a.status)
+        const bPriority = priorityOrder.indexOf(b.status)
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority
+        }
+        // Within same status, sort by timestamp (newest first)
+        return b.timestamp - a.timestamp
+      })
+      .map(p => p.id)
+  }, [paymentIds, paymentsData])
+
   useEffect(() => {
     if (isRegisterSuccess) {
       refetchMerchantStatus()
@@ -54,11 +104,14 @@ export default function RequestMoneyPage() {
 
   useEffect(() => {
     if (isCreatePaymentSuccess) {
-      // Small delay to ensure blockchain state has propagated
+      // Multiple refetches with delays to ensure blockchain state has propagated
       setTimeout(() => {
         refetchPayments()
         alert('Payment link generated! 🎉')
       }, 1000)
+      // Additional refetches to ensure new card data is loaded
+      setTimeout(() => refetchPayments(), 2000)
+      setTimeout(() => refetchPayments(), 3000)
     }
   }, [isCreatePaymentSuccess, refetchPayments])
 
@@ -279,8 +332,8 @@ export default function RequestMoneyPage() {
             transition={{ delay: 0.5 }}
             className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {merchantPayments && (merchantPayments as string[]).length > 0 ? (
-              (merchantPayments as string[]).map((paymentId: string, index: number) => (
+            {sortedPaymentIds && sortedPaymentIds.length > 0 ? (
+              sortedPaymentIds.map((paymentId: string, index: number) => (
                 <motion.div
                   key={paymentId}
                   initial={{ opacity: 0, y: 20 }}

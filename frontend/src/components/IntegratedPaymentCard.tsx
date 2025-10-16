@@ -17,6 +17,10 @@ export default function IntegratedPaymentCard({ paymentId }: IntegratedPaymentCa
     abi: PaymentGatewayABI,
     functionName: 'getPayment',
     args: [paymentId],
+    query: {
+      refetchOnMount: true, // Always refetch when component mounts
+      staleTime: 0, // Consider data stale immediately so it refetches on mount
+    }
   })
 
   if (!payment) return null
