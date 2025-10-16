@@ -36,15 +36,10 @@ contract TestPriceOracle is Test {
     int256 constant NEGATIVE_PRICE = -100_00000000; // Invalid negative price
 
     // ETH address representation (must match PriceOracle.sol)
-    address constant ETH_ADDRESS =
-        address(0x1111111111111111111111111111111111111111);
+    address constant ETH_ADDRESS = address(0x1111111111111111111111111111111111111111);
 
     // Events for testing
-    event TokenAdded(
-        address indexed token,
-        address indexed priceFeed,
-        string symbol
-    );
+    event TokenAdded(address indexed token, address indexed priceFeed, string symbol);
     event TokenUpdated(address indexed token, address indexed priceFeed);
     event TokenRemoved(address indexed token);
 
@@ -122,46 +117,24 @@ contract TestPriceOracle is Test {
     function testCannotAddDuplicateToken() public {
         oracle.addToken(ETH_ADDRESS, address(ethPriceFeed), "ETH");
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.TokenAlreadyExists.selector,
-                ETH_ADDRESS
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.TokenAlreadyExists.selector, ETH_ADDRESS));
         oracle.addToken(ETH_ADDRESS, address(ethPriceFeed), "ETH");
     }
 
     function testCannotAddTokenWithInvalidPriceFeed() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.InvalidPriceFeed.selector,
-                address(0)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.InvalidPriceFeed.selector, address(0)));
         oracle.addToken(ETH_ADDRESS, address(0), "ETH");
     }
 
     function testCannotAddTokenWithNegativePrice() public {
         MockPriceFeed negativeFeed = new MockPriceFeed(8, NEGATIVE_PRICE);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.InvalidPrice.selector,
-                ETH_ADDRESS,
-                NEGATIVE_PRICE
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.InvalidPrice.selector, ETH_ADDRESS, NEGATIVE_PRICE));
         oracle.addToken(ETH_ADDRESS, address(negativeFeed), "ETH");
     }
 
     function testCannotAddTokenWithStalePrice() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.StalePrice.selector,
-                ETH_ADDRESS,
-                block.timestamp - 1000
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.StalePrice.selector, ETH_ADDRESS, block.timestamp - 1000));
         oracle.addToken(ETH_ADDRESS, address(stalePriceFeed), "ETH");
     }
 
@@ -186,9 +159,7 @@ contract TestPriceOracle is Test {
         oracle.updateTokenPriceFeed(ETH_ADDRESS, address(newEthPriceFeed));
 
         // Verify price feed was updated
-        PriceOracle.TokenInfo memory tokenInfo = oracle.getTokenInfo(
-            ETH_ADDRESS
-        );
+        PriceOracle.TokenInfo memory tokenInfo = oracle.getTokenInfo(ETH_ADDRESS);
         assertEq(address(tokenInfo.priceFeed), address(newEthPriceFeed));
         assertEq(tokenInfo.lastUpdated, block.timestamp);
 
@@ -198,24 +169,14 @@ contract TestPriceOracle is Test {
     }
 
     function testCannotUpdateNonexistentToken() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.TokenNotSupported.selector,
-                ETH_ADDRESS
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.TokenNotSupported.selector, ETH_ADDRESS));
         oracle.updateTokenPriceFeed(ETH_ADDRESS, address(ethPriceFeed));
     }
 
     function testCannotUpdateWithInvalidPriceFeed() public {
         oracle.addToken(ETH_ADDRESS, address(ethPriceFeed), "ETH");
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.InvalidPriceFeed.selector,
-                address(0)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.InvalidPriceFeed.selector, address(0)));
         oracle.updateTokenPriceFeed(ETH_ADDRESS, address(0));
     }
 
@@ -258,10 +219,7 @@ contract TestPriceOracle is Test {
 
     function testGetTokenPriceWithDifferentDecimals() public {
         // Create price feed with different decimals
-        MockPriceFeed feed18Decimals = new MockPriceFeed(
-            18,
-            2000_000000000000000000
-        ); // $2000 with 18 decimals
+        MockPriceFeed feed18Decimals = new MockPriceFeed(18, 2000_000000000000000000); // $2000 with 18 decimals
         MockPriceFeed feed6Decimals = new MockPriceFeed(6, 2000_000000); // $2000 with 6 decimals
 
         oracle.addToken(address(mockUSDC), address(feed18Decimals), "TEST18");
@@ -276,20 +234,10 @@ contract TestPriceOracle is Test {
     }
 
     function testCannotGetPriceForUnsupportedToken() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.TokenNotSupported.selector,
-                ETH_ADDRESS
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.TokenNotSupported.selector, ETH_ADDRESS));
         oracle.getTokenPrice(ETH_ADDRESS);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.TokenNotSupported.selector,
-                ETH_ADDRESS
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.TokenNotSupported.selector, ETH_ADDRESS));
         oracle.getTokenPriceInUSD(ETH_ADDRESS);
     }
 
@@ -299,13 +247,7 @@ contract TestPriceOracle is Test {
         // Make the price feed stale
         ethPriceFeed.setUpdatedAt(block.timestamp - 1000); // 1000 seconds ago
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.StalePrice.selector,
-                ETH_ADDRESS,
-                block.timestamp - 1000
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.StalePrice.selector, ETH_ADDRESS, block.timestamp - 1000));
         oracle.getTokenPrice(ETH_ADDRESS);
     }
 
@@ -315,13 +257,7 @@ contract TestPriceOracle is Test {
         // Set negative price
         ethPriceFeed.setPrice(NEGATIVE_PRICE);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.InvalidPrice.selector,
-                ETH_ADDRESS,
-                NEGATIVE_PRICE
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.InvalidPrice.selector, ETH_ADDRESS, NEGATIVE_PRICE));
         oracle.getTokenPrice(ETH_ADDRESS);
     }
 
@@ -356,17 +292,11 @@ contract TestPriceOracle is Test {
         assertEq(ethValue, 2000_00000000);
 
         // Convert 100 USDC to USD (100 USDC = $100)
-        uint256 usdcValue = oracle.convertTokenToUSD(
-            address(mockUSDC),
-            100 * 1e6
-        );
+        uint256 usdcValue = oracle.convertTokenToUSD(address(mockUSDC), 100 * 1e6);
         assertEq(usdcValue, 100_00000000);
 
         // Convert 1 WBTC to USD (1 WBTC = $45000)
-        uint256 wbtcValue = oracle.convertTokenToUSD(
-            address(mockWBTC),
-            1 * 1e8
-        );
+        uint256 wbtcValue = oracle.convertTokenToUSD(address(mockWBTC), 1 * 1e8);
         assertEq(wbtcValue, 45000_00000000);
     }
 
@@ -392,29 +322,17 @@ contract TestPriceOracle is Test {
         uint256 backToUSD = oracle.convertTokenToUSD(ETH_ADDRESS, ethAmount);
 
         // Should be very close (allowing for rounding differences)
-        uint256 difference = originalUSD > backToUSD
-            ? originalUSD - backToUSD
-            : backToUSD - originalUSD;
+        uint256 difference = originalUSD > backToUSD ? originalUSD - backToUSD : backToUSD - originalUSD;
 
         // Allow up to 1 cent difference due to rounding
         assertLe(difference, 1000000); // 0.01 USD in 8 decimals
     }
 
     function testConvertUnsupportedToken() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.TokenNotSupported.selector,
-                address(mockUSDC)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.TokenNotSupported.selector, address(mockUSDC)));
         oracle.convertUSDToToken(address(mockUSDC), 100_00000000);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.TokenNotSupported.selector,
-                address(mockUSDC)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.TokenNotSupported.selector, address(mockUSDC)));
         oracle.convertTokenToUSD(address(mockUSDC), 100 * 1e6);
     }
 
@@ -445,12 +363,7 @@ contract TestPriceOracle is Test {
         tokens[0] = ETH_ADDRESS;
         tokens[1] = address(mockUSDC); // Not supported
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.TokenNotSupported.selector,
-                address(mockUSDC)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.TokenNotSupported.selector, address(mockUSDC)));
         oracle.getMultipleTokenPrices(tokens);
     }
 
@@ -506,12 +419,7 @@ contract TestPriceOracle is Test {
     // ============ TOKEN INFO TESTS ============
 
     function testGetTokenInfoForNonexistentToken() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.TokenNotSupported.selector,
-                ETH_ADDRESS
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.TokenNotSupported.selector, ETH_ADDRESS));
         oracle.getTokenInfo(ETH_ADDRESS);
     }
 
@@ -542,13 +450,7 @@ contract TestPriceOracle is Test {
     function testZeroPrice() public {
         MockPriceFeed zeroPriceFeed = new MockPriceFeed(8, 0);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.InvalidPrice.selector,
-                ETH_ADDRESS,
-                int256(0)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.InvalidPrice.selector, ETH_ADDRESS, int256(0)));
         oracle.addToken(ETH_ADDRESS, address(zeroPriceFeed), "ETH");
     }
 
@@ -578,13 +480,7 @@ contract TestPriceOracle is Test {
         uint256 staleTime = block.timestamp - 901; // 1 second over limit
         limitPriceFeed.setUpdatedAt(staleTime);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.StalePrice.selector,
-                ETH_ADDRESS,
-                staleTime
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.StalePrice.selector, ETH_ADDRESS, staleTime));
         oracle.getTokenPrice(ETH_ADDRESS);
     }
 
@@ -628,12 +524,7 @@ contract TestPriceOracle is Test {
         assertFalse(oracle.isTokenSupported(ETH_ADDRESS));
 
         // Verify token can't be used anymore
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.TokenNotSupported.selector,
-                ETH_ADDRESS
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.TokenNotSupported.selector, ETH_ADDRESS));
         oracle.getTokenPriceInUSD(ETH_ADDRESS);
     }
 
@@ -696,22 +587,13 @@ contract TestPriceOracle is Test {
         // Add many tokens
         for (uint256 i = 0; i < tokenCount; i++) {
             mockTokens[i] = new MockERC20(
-                string(abi.encodePacked("Token", vm.toString(i))),
-                string(abi.encodePacked("TKN", vm.toString(i))),
-                18
+                string(abi.encodePacked("Token", vm.toString(i))), string(abi.encodePacked("TKN", vm.toString(i))), 18
             );
             tokens[i] = address(mockTokens[i]);
 
-            priceFeeds[i] = new MockPriceFeed(
-                8,
-                int256((i + 1) * 100_00000000)
-            ); // $100, $200, $300, etc.
+            priceFeeds[i] = new MockPriceFeed(8, int256((i + 1) * 100_00000000)); // $100, $200, $300, etc.
 
-            oracle.addToken(
-                tokens[i],
-                address(priceFeeds[i]),
-                string(abi.encodePacked("TKN", vm.toString(i)))
-            );
+            oracle.addToken(tokens[i], address(priceFeeds[i]), string(abi.encodePacked("TKN", vm.toString(i))));
         }
 
         // Verify all tokens are supported
@@ -737,10 +619,7 @@ contract TestPriceOracle is Test {
             oracle.removeToken(tokens[i]);
         }
 
-        assertEq(
-            oracle.getSupportedTokens().length,
-            tokenCount - tokenCount / 2
-        );
+        assertEq(oracle.getSupportedTokens().length, tokenCount - tokenCount / 2);
     }
 
     // function testPriceUpdateFrequency() public {
@@ -894,13 +773,7 @@ contract TestPriceOracle is Test {
         // Simulate price feed failure by setting invalid data
         failingFeed.setPrice(0); // Invalid price
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PriceOracle.InvalidPrice.selector,
-                ETH_ADDRESS,
-                int256(0)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.InvalidPrice.selector, ETH_ADDRESS, int256(0)));
         oracle.getTokenPrice(ETH_ADDRESS);
     }
 
@@ -927,15 +800,9 @@ contract TestPriceOracle is Test {
 
     // ============ HELPER FUNCTIONS ============
 
-    function _deployMockTokensAndFeeds(
-        uint256 count
-    )
+    function _deployMockTokensAndFeeds(uint256 count)
         internal
-        returns (
-            MockERC20[] memory tokens,
-            MockPriceFeed[] memory feeds,
-            address[] memory tokenAddresses
-        )
+        returns (MockERC20[] memory tokens, MockPriceFeed[] memory feeds, address[] memory tokenAddresses)
     {
         tokens = new MockERC20[](count);
         feeds = new MockPriceFeed[](count);
@@ -943,9 +810,7 @@ contract TestPriceOracle is Test {
 
         for (uint256 i = 0; i < count; i++) {
             tokens[i] = new MockERC20(
-                string(abi.encodePacked("Token", vm.toString(i))),
-                string(abi.encodePacked("TKN", vm.toString(i))),
-                18
+                string(abi.encodePacked("Token", vm.toString(i))), string(abi.encodePacked("TKN", vm.toString(i))), 18
             );
             tokenAddresses[i] = address(tokens[i]);
 
@@ -953,11 +818,7 @@ contract TestPriceOracle is Test {
         }
     }
 
-    function _addMockTokens(
-        address[] memory tokens,
-        MockPriceFeed[] memory feeds,
-        string[] memory symbols
-    ) internal {
+    function _addMockTokens(address[] memory tokens, MockPriceFeed[] memory feeds, string[] memory symbols) internal {
         require(tokens.length == feeds.length, "Array length mismatch");
         require(tokens.length == symbols.length, "Array length mismatch");
 
@@ -966,14 +827,8 @@ contract TestPriceOracle is Test {
         }
     }
 
-    function _verifyTokenPrices(
-        address[] memory tokens,
-        uint256[] memory expectedPrices
-    ) internal view {
-        require(
-            tokens.length == expectedPrices.length,
-            "Array length mismatch"
-        );
+    function _verifyTokenPrices(address[] memory tokens, uint256[] memory expectedPrices) internal view {
+        require(tokens.length == expectedPrices.length, "Array length mismatch");
 
         for (uint256 i = 0; i < tokens.length; i++) {
             uint256 actualPrice = oracle.getTokenPriceInUSD(tokens[i]);
